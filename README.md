@@ -4,23 +4,19 @@ This is an early prototype of using prompting strategies to improve the LLM's re
 
 o1lama is experimental and being open sourced to help inspire the open source community to develop new strategies to produce o1-like reasoning. This is an experiment to show the power of prompting reasoning in visualized steps, not a comparison to or full replication of o1, which uses different techniques. Let's build!
 
-### Examples
+## Examples:
 
-> [!IMPORTANT]
-> o1lama is not perfect, but it can perform significantly better than LLMs out-of-the-box. From initial testing, o1lama accurately solves simple logic problems 60-80% of the time that usually stump LLMs. However, accuracy has yet to be formally evaluated. See examples below.
+### How many 'R's are in the word strawberry?
 
-##### How many Rs are in strawberry?
-Prompt: How many Rs are in strawberry?
-
-Result:
+O1lama gets the wrong answer, but tries to reason. It's interesting that it's blind to the 3rd "r" in Step 3.
 
 ![Strawberry example](examples/strawberry.png)
 
 ---
 
-Prompt: Which is larger, .9 or .11?
+### Which is larger, .9 or .11?
 
-Result:
+O1lama gets this one right.
 
 ![0.9 or 0.11 example](examples/math.png)
 
@@ -73,7 +69,7 @@ First, a persona is added:
 
 Then, instructions to describe the expected step-by-step reasoning process while titling each reasoning step. This includes the ability for the LLM to decide if another reasoning step is needed or if the final answer can be provided.
 
-> For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer. 
+> For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer.
 
 A specific formatting instruction is provided to ensure consistent output in JSON format:
 
@@ -81,12 +77,12 @@ A specific formatting instruction is provided to ensure consistent output in JSO
 
 In all-caps to improve prompt compliance by emphasizing the importance of the instruction, a set of tips and best practices are included.
 
-1. Use as many reasoning steps as possible. At least 3. -> This ensures the LLM actually takes the time to think first, and results usually in about 5-10 steps.
-2. Be aware of your limitations as an llm and what you can and cannot do. -> This helps the LLM remember to use techniques which produce better results, like breaking "strawberry" down into individual letters before counting.
-3. Include exploration of alternative answers. Consider you may be wrong, and if you are wrong in your reasoning, where it would be. -> A large part of the gains seem to come from the LLM re-evaluating its initial response to ensure it logically aligns with the problem.
-4. When you say you are re-examining, actually re-examine, and use another approach to do so. Do not just say you are re-examining. -> This encourages the prevention of the LLM just saying it re-examined a problem without actually trying a new approach. 
-5. Use at least 3 methods to derive the answer. -> This helps the LLM come to the right answer by trying multiple methods to derive it.
-6. Use best practices. -> This is as simple as the "Do better" prompts which improve LLM code output. By telling the LLM to use best practices, or do better, it generally performs better!
+1. Use as many reasoning steps as possible. At least 3. → This ensures the LLM actually takes the time to think first, and results usually in about 5-10 steps.
+2. Be aware of your limitations as an llm and what you can and cannot do. → This helps the LLM remember to use techniques which produce better results, like breaking "strawberry" down into individual letters before counting.
+3. Include exploration of alternative answers. Consider you may be wrong, and if you are wrong in your reasoning, where it would be. → A large part of the gains seem to come from the LLM re-evaluating its initial response to ensure it logically aligns with the problem.
+4. When you say you are re-examining, actually re-examine, and use another approach to do so. Do not just say you are re-examining. → This encourages the prevention of the LLM just saying it re-examined a problem without actually trying a new approach.
+5. Use at least 3 methods to derive the answer. → This helps the LLM come to the right answer by trying multiple methods to derive it.
+6. Use best practices. → This is as simple as the "Do better" prompts which improve LLM code output. By telling the LLM to use best practices, or do better, it generally performs better!
 
 ### Output Format
 
