@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import json
 import time
+import re
 
 OLLAMA_API_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "llama3.1"  # Change this to the model you have in Ollama
@@ -30,37 +31,32 @@ def make_api_call(messages, max_tokens, is_final_answer=False):
             
             content = response_json['message']['content']
             
-            if not content.strip():
-                return None
+            # Extract all JSON objects from the content
+            json_objects = re.findall(r'```json\n(.*?)\n```', content, re.DOTALL)
             
-            # Try to parse the content as JSON
-            try:
-                # Find the JSON part within the content
-                json_start = content.find('{')
-                json_end = content.rfind('}') + 1
-                if json_start != -1 and json_end != -1:
-                    json_content = content[json_start:json_end]
-                    parsed_content = json.loads(json_content)
+            if json_objects:
+                # Use the last JSON object (most recent step)
+                last_json = json_objects[-1]
+                try:
+                    parsed_content = json.loads(last_json)
                     if isinstance(parsed_content, dict) and all(key in parsed_content for key in ['title', 'content', 'next_action']):
                         return parsed_content
-            except json.JSONDecodeError:
-                pass  # If it's not valid JSON, we'll fall back to the previous behavior
+                except json.JSONDecodeError:
+                    pass
             
-            # If not valid JSON, return raw content
+            # If no valid JSON objects found, return an error
             return {
-                "title": "Raw Response",
-                "content": content,
-                "next_action": "final_answer" if is_final_answer else "continue"
+                "title": "Error",
+                "content": "Failed to parse response as JSON",
+                "next_action": "final_answer"
             }
         
         except Exception as e:
-            print(f"Attempt {attempt + 1} failed. Error: {str(e)}")
             if attempt == 2:
-                return {
-                    "title": "Error",
-                    "content": f"Failed to generate {'final answer' if is_final_answer else 'step'} after 3 attempts. Error: {str(e)}",
-                    "next_action": "final_answer"
-                }
+                if is_final_answer:
+                    return {"title": "Error", "content": f"Failed to generate final answer after 3 attempts. Error: {str(e)}"}
+                else:
+                    return {"title": "Error", "content": f"Failed to generate step after 3 attempts. Error: {str(e)}", "next_action": "final_answer"}
             time.sleep(1)  # Wait for 1 second before retrying
 
     return None
@@ -75,8 +71,10 @@ Example of a valid JSON response:
     "title": "Identifying Key Information",
     "content": "To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...",
     "next_action": "continue"
-}```"""},
+}```
+"""},
         {"role": "user", "content": prompt},
+        {"role": "assistant", "content": "Thank you! I will now think step by step following my instructions, starting at the beginning after decomposing the problem."}
     ]
     
     steps = []
@@ -85,39 +83,35 @@ Example of a valid JSON response:
     
     while True:
         start_time = time.time()
-        step_data = make_api_call(messages, 500)
+        step_data = make_api_call(messages, 300)
         end_time = time.time()
         thinking_time = end_time - start_time
         total_thinking_time += thinking_time
-        
-        if step_data is None:
-            steps.append(("Error", "Failed to generate a response", thinking_time))
-            break
         
         steps.append((f"Step {step_count}: {step_data['title']}", step_data['content'], thinking_time))
         
         messages.append({"role": "assistant", "content": json.dumps(step_data)})
         
-        if step_data['next_action'] == 'final_answer' or step_data['title'].startswith("Error"):
+        if step_data['next_action'] == 'final_answer':
             break
         
         step_count += 1
 
-        yield steps, None
+        yield steps, None  # We're not yielding the total time until the end
 
-    if step_data and not step_data['title'].startswith("Error"):
-        messages.append({"role": "user", "content": "Please provide the final answer based on your reasoning above."})
-        
-        start_time = time.time()
-        final_data = make_api_call(messages, 200, is_final_answer=True)
-        end_time = time.time()
-        thinking_time = end_time - start_time
-        total_thinking_time += thinking_time
-        
-        if final_data:
-            steps.append(("Final Answer", final_data['content'], thinking_time))
+    # Generate final answer
+    messages.append({"role": "user", "content": "Please provide the final answer based on your reasoning above."})
+    
+    start_time = time.time()
+    final_data = make_api_call(messages, 200, is_final_answer=True)
+    end_time = time.time()
+    thinking_time = end_time - start_time
+    total_thinking_time += thinking_time
+    
+    steps.append(("Final Answer", final_data['content'], thinking_time))
 
     yield steps, total_thinking_time
+
 
 def main():
     st.set_page_config(page_title="o1lama prototype", page_icon="🧠", layout="wide")
