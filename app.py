@@ -164,7 +164,6 @@ def main():
     user_query = st.text_area("Enter your query:", placeholder="e.g., How many 'R's are in the word strawberry?", height=120)
     
     # Create placeholder containers
-    generating_message = st.empty()
     response_container = st.empty()
     time_container = st.empty()
     
@@ -173,18 +172,17 @@ def main():
         response_container.empty()
         time_container.empty()
         
-        # Show "Generating response..." message
-        generating_message.write("Generating response...")
-        
-        # Generate and display the response
-        final_reasoning_steps = []
-        final_answer = None
-        final_done_reason = None
-        for reasoning_steps, answer, total_thinking_time, done_reason in generate_response(user_query, selected_model, selected_tokens):
-            final_reasoning_steps = reasoning_steps
-            final_done_reason = done_reason
-            if answer:
-                final_answer = answer
+        # Show "Generating response..." message with a spinner
+        with st.spinner("Generating response..."):
+            # Generate and display the response
+            final_reasoning_steps = []
+            final_answer = None
+            final_done_reason = None
+            for reasoning_steps, answer, total_thinking_time, done_reason in generate_response(user_query, selected_model, selected_tokens):
+                final_reasoning_steps = reasoning_steps
+                final_done_reason = done_reason
+                if answer:
+                    final_answer = answer
 
         with response_container.container():
             if len(final_reasoning_steps) > 1:  # Check if there are multiple steps
@@ -200,7 +198,7 @@ def main():
                 st.markdown(final_reasoning_steps[-1][1], unsafe_allow_html=True)
             else:  # If there are no steps and no final answer
                 st.markdown("No detailed reasoning steps were provided.")
-                
+
         # Show total time
         if total_thinking_time is not None:
             time_container.markdown(f"**Total thinking time: {total_thinking_time:.2f} seconds**")
@@ -208,9 +206,6 @@ def main():
         # Display warning if response was truncated due to token limit
         if final_done_reason == "length":
             st.warning("The response was truncated due to token limit. Consider increasing the max token value for a more complete response.")
-        
-        # Clear the "Generating response..." message after completion
-        generating_message.empty()
 
 
 if __name__ == "__main__":
