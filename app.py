@@ -39,6 +39,7 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
                 raise ValueError(f"Unexpected API response structure: {response_json}")
             
             content = response_json['message']['content']
+            done_reason = response_json.get('done_reason', None)
             
             # Parse the multi-step response
             steps = re.split(r'(### Step \d+:.*?|### Final Answer:.*?)(?=\n)', content)
@@ -61,9 +62,16 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
                         "next_action": next_action
                     })
             
-            # If we found valid steps, return them
+            # If we found valid steps, return them along with done_reason
             if parsed_steps:
-                return parsed_steps
+                return parsed_steps, done_reason
+            
+            # If no valid steps found, create a single step from the entire content
+            return [{
+                "title": "### Response",
+                "content": content,
+                "next_action": "final_answer"
+            }], done_reason
             
             # If no valid steps found, create a single step from the entire content
             return [{
@@ -116,7 +124,7 @@ Remember to be aware of your limitations as an AI and use best practices in your
     
     while True:
         start_time = time.time()
-        step_data_list = make_api_call(messages, max_tokens, model_name)
+        step_data_list, done_reason = make_api_call(messages, max_tokens, model_name)
         end_time = time.time()
         thinking_time = end_time - start_time
         total_thinking_time += thinking_time
@@ -126,15 +134,14 @@ Remember to be aware of your limitations as an AI and use best practices in your
             messages.append({"role": "assistant", "content": json.dumps(step_data)})
             
             if step_data['next_action'] == 'final_answer':
-                yield reasoning_steps, (step_data['title'], step_data['content'], thinking_time), total_thinking_time
+                yield reasoning_steps, (step_data['title'], step_data['content'], thinking_time), total_thinking_time, done_reason
                 return
         
         # Always yield reasoning steps, even if there's only one
-        yield reasoning_steps, None, None
+        yield reasoning_steps, None, None, done_reason
 
     # This line should not be reached, but just in case:
-    yield reasoning_steps, None, total_thinking_time
-
+    yield reasoning_steps, None, total_thinking_time, done_reason
 
 def main():
     st.set_page_config(page_title="o1lama prototype", page_icon="🧠", layout="wide")
@@ -170,8 +177,10 @@ def main():
         # Generate and display the response
         final_reasoning_steps = []
         final_answer = None
-        for reasoning_steps, answer, total_thinking_time in generate_response(user_query, selected_model, selected_tokens):
+        final_done_reason = None
+        for reasoning_steps, answer, total_thinking_time, done_reason in generate_response(user_query, selected_model, selected_tokens):
             final_reasoning_steps = reasoning_steps
+            final_done_reason = done_reason
             if answer:
                 final_answer = answer
 
@@ -188,6 +197,10 @@ def main():
         # Show total time
         if total_thinking_time is not None:
             time_container.markdown(f"**Total thinking time: {total_thinking_time:.2f} seconds**")
+        
+        # Display warning if response was truncated due to token limit
+        if final_done_reason == "length":
+            st.warning("The response was truncated due to token limit. Consider increasing the max token value for a more complete response.")
         
         # Clear the "Generating response..." message after completion
         generating_message.empty()
