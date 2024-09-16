@@ -41,23 +41,25 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
             content = response_json['message']['content']
             
             # Parse the multi-step response
-            steps = re.split(r'\*\*Step \d+:|\*\*Conclusion|\*\*Final Answer:', content)
+            steps = re.split(r'(### Step \d+:.*?|### Final Answer:.*?)(?=\n)', content)
             steps = [step.strip() for step in steps if step.strip()]
             
             parsed_steps = []
-            for i, step in enumerate(steps):
-                if i == len(steps) - 1 and ("Conclusion" in content or "Final Answer" in content):
-                    title = "Final Answer"
-                    next_action = "final_answer"
-                else:
-                    title = f"Step {i+1}"
-                    next_action = "continue"
-                
-                parsed_steps.append({
-                    "title": title,
-                    "content": step,
-                    "next_action": next_action
-                })
+            for i in range(0, len(steps), 2):
+                if i + 1 < len(steps):
+                    title = steps[i]
+                    content = steps[i+1]
+                    
+                    if "Final Answer:" in title:
+                        next_action = "final_answer"
+                    else:
+                        next_action = "continue"
+                    
+                    parsed_steps.append({
+                        "title": title,
+                        "content": content,
+                        "next_action": next_action
+                    })
             
             # If we found valid steps, return them
             if parsed_steps:
@@ -65,7 +67,7 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
             
             # If no valid steps found, create a single step from the entire content
             return [{
-                "title": "Response",
+                "title": "### Response",
                 "content": content,
                 "next_action": "final_answer"
             }]
@@ -73,21 +75,43 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
         except Exception as e:
             if attempt == 2:
                 if is_final_answer:
-                    return [{"title": "Error", "content": f"Failed to generate final answer after 3 attempts. Error: {str(e)}"}]
+                    return [{"title": "### Error", "content": f"Failed to generate final answer after 3 attempts. Error: {str(e)}"}]
                 else:
-                    return [{"title": "Error", "content": f"Failed to generate step after 3 attempts. Error: {str(e)}", "next_action": "final_answer"}]
+                    return [{"title": "### Error", "content": f"Failed to generate step after 3 attempts. Error: {str(e)}", "next_action": "final_answer"}]
             time.sleep(1)  # Wait for 1 second before retrying
 
     return None
 
 def generate_response(prompt, model_name):
     messages = [
-        {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer. USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. FULLY TEST ALL OTHER POSSIBILITIES. YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES."""},
+        {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. Follow these guidelines:
+
+1. Structure your response with clear steps, each starting with "### Step X: [Step Title]" where X is the step number.
+2. Use at least 3 steps in your reasoning.
+3. For each step, provide detailed content explaining your thought process.
+4. Explore alternative answers and consider potential errors in your reasoning.
+5. Use at least 3 different methods to derive the answer.
+6. Always end with a final step titled "### Final Answer:"
+7. After the "### Final Answer:" step, provide a concise summary of your conclusion.
+
+Example structure:
+### Step 1: [Step Title]
+[Step 1 content]
+
+### Step 2: [Step Title]
+[Step 2 content]
+
+### Step 3: [Step Title]
+[Step 3 content]
+
+### Final Answer:
+[Concise summary of the conclusion]
+
+Remember to be aware of your limitations as an AI and use best practices in your reasoning."""},
         {"role": "user", "content": prompt},
     ]
     
     reasoning_steps = []
-    step_count = 1
     total_thinking_time = 0
     
     while True:
@@ -98,9 +122,8 @@ def generate_response(prompt, model_name):
         total_thinking_time += thinking_time
         
         for step_data in step_data_list:
-            reasoning_steps.append((f"Step {step_count}: {step_data['title']}", step_data['content'], thinking_time / len(step_data_list)))
+            reasoning_steps.append((step_data['title'], step_data['content'], thinking_time / len(step_data_list)))
             messages.append({"role": "assistant", "content": json.dumps(step_data)})
-            step_count += 1
             
             if step_data['next_action'] == 'final_answer':
                 yield reasoning_steps, (step_data['title'], step_data['content'], thinking_time), total_thinking_time
@@ -111,6 +134,7 @@ def generate_response(prompt, model_name):
 
     # This line should not be reached, but just in case:
     yield reasoning_steps, None, total_thinking_time
+
 
 def main():
     st.set_page_config(page_title="o1lama prototype", page_icon="🧠", layout="wide")
@@ -154,7 +178,7 @@ def main():
                     st.markdown(step[1].replace('\n', '<br>'), unsafe_allow_html=True)
             
             if final_answer:
-                st.markdown("### Answer")
+                st.markdown(final_answer[0])  # Display the full "### Final Answer:" title
                 st.markdown(final_answer[1].replace('\n', '<br>'), unsafe_allow_html=True)
         
         # Show total time
@@ -166,3 +190,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
