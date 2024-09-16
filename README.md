@@ -5,7 +5,7 @@ o1lama is a fun experiment designed to enhance the reasoning capabilities of lar
 o1lama is an toy project that runs Llama 3.1 **7B** locally using Ollama. It was forked from [https://github.com/bklieger-groq/g1](https://github.com/bklieger-groq/g1) which runs Llama 3.1 **70B** models on groq for speed. This experiment demonstrates the power of prompted reasoning in visualized steps similar in appearance to o1. It obviously is not intended as a comparison to or full replication of o1, which employs different techniques.
 
 ## Other models
-O1lama is now a bit more flexible and will let you select from other models besides Llama 3.1 if you have them installed locally. I've experimented using Mistal Nemo 12B with fun results.
+O1lama is now a bit more flexible and will let you select from other models besides Llama 3.1 if you have them installed locally. I've experimented using [Mistral Nemo 12B](https://ollama.com/library/mistral-nemo) with fun results.
 
 ## Examples:
 
