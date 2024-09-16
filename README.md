@@ -5,8 +5,6 @@ This is an early prototype of using prompting strategies to improve the LLM's re
 
 o1lama is experimental and being open sourced to help inspire the open source community to develop new strategies to produce o1-like reasoning. This is an experiment to show the power of prompting reasoning in visualized steps, not a comparison to or full replication of o1, which uses different techniques. Let's build!
 
-![screenshot](screenshot.png)
-
 ### Examples
 
 > [!IMPORTANT]
