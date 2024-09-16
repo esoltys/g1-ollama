@@ -159,7 +159,7 @@ def main():
     selected_tokens = st.selectbox("Select max tokens:", token_options, index=token_options.index(1024))
     
     # Text area for user query (4 lines high)
-    user_query = st.text_area("Enter your query:", placeholder="e.g., How many 'R's are in the word strawberry?", height=100)
+    user_query = st.text_area("Enter your query:", placeholder="e.g., How many 'R's are in the word strawberry?", height=120)
     
     # Create placeholder containers
     generating_message = st.empty()
