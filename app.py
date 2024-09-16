@@ -42,7 +42,7 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
             done_reason = response_json.get('done_reason', None)
             
             # Parse the multi-step response
-            steps = re.split(r'(### Step \d+:.*?|### Final Answer:.*?)(?=\n)', content)
+            steps = re.split(r'(### Step \d+:.*?|### Final Answer:?.*?)(?=\n)', content)
             steps = [step.strip() for step in steps if step.strip()]
             
             parsed_steps = []
@@ -51,7 +51,8 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
                     title = steps[i]
                     content = steps[i+1]
                     
-                    if "Final Answer:" in title:
+                    if "Final Answer" in title:
+                        title = "### Final Answer"
                         next_action = "final_answer"
                     else:
                         next_action = "continue"
@@ -61,6 +62,7 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
                         "content": content,
                         "next_action": next_action
                     })
+
             
             # If we found valid steps, return them along with done_reason
             if parsed_steps:
@@ -185,15 +187,20 @@ def main():
                 final_answer = answer
 
         with response_container.container():
-            st.markdown("### Reasoning")
-            for step in final_reasoning_steps[:-1]:  # Exclude the last step
-                with st.expander(step[0], expanded=True):
-                    st.markdown(step[1], unsafe_allow_html=True)
+            if len(final_reasoning_steps) > 1:  # Check if there are multiple steps
+                st.markdown("### Reasoning")
+                for step in final_reasoning_steps[:-1]:  # Exclude the last step
+                    with st.expander(step[0], expanded=True):
+                        st.markdown(step[1], unsafe_allow_html=True)
             
             if final_answer:
-                st.markdown(final_answer[0])  # Display the full "### Final Answer:" title
+                st.markdown("### Final Answer")  # Display "Final Answer" without colon
                 st.markdown(final_answer[1], unsafe_allow_html=True)
-
+            elif final_reasoning_steps:  # If there's no final answer but there are steps
+                st.markdown(final_reasoning_steps[-1][1], unsafe_allow_html=True)
+            else:  # If there are no steps and no final answer
+                st.markdown("No detailed reasoning steps were provided.")
+                
         # Show total time
         if total_thinking_time is not None:
             time_container.markdown(f"**Total thinking time: {total_thinking_time:.2f} seconds**")
