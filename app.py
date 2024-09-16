@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import json
 import time
-import re
 
 OLLAMA_API_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "llama3.1"  # Change this to the model you have in Ollama
@@ -34,22 +33,25 @@ def make_api_call(messages, max_tokens, is_final_answer=False):
             if not content.strip():
                 return None
             
-            # Extract steps from the content
-            steps = re.findall(r'\*\*Step \d+: (.+?)\*\*\n(.+?)(?=\n\*\*|\Z)', content, re.DOTALL)
+            # Try to parse the content as JSON
+            try:
+                # Find the JSON part within the content
+                json_start = content.find('{')
+                json_end = content.rfind('}') + 1
+                if json_start != -1 and json_end != -1:
+                    json_content = content[json_start:json_end]
+                    parsed_content = json.loads(json_content)
+                    if isinstance(parsed_content, dict) and all(key in parsed_content for key in ['title', 'content', 'next_action']):
+                        return parsed_content
+            except json.JSONDecodeError:
+                pass  # If it's not valid JSON, we'll fall back to the previous behavior
             
-            if steps:
-                last_step = steps[-1]
-                return {
-                    "title": last_step[0],
-                    "content": last_step[1].strip(),
-                    "next_action": "continue" if len(steps) == 1 else "final_answer"
-                }
-            else:
-                return {
-                    "title": "Raw Response",
-                    "content": content,
-                    "next_action": "final_answer" if is_final_answer else "continue"
-                }
+            # If not valid JSON, return raw content
+            return {
+                "title": "Raw Response",
+                "content": content,
+                "next_action": "final_answer" if is_final_answer else "continue"
+            }
         
         except Exception as e:
             print(f"Attempt {attempt + 1} failed. Error: {str(e)}")
@@ -65,17 +67,15 @@ def make_api_call(messages, max_tokens, is_final_answer=False):
 
 def generate_response(prompt):
     messages = [
-        {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer. Format your response as follows:
+        {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer. Respond in JSON format with 'title', 'content', and 'next_action' (either 'continue' or 'final_answer') keys. USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. FULLY TEST ALL OTHER POSSIBILITIES. YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
 
-**Step 1: [Title]**
-[Content]
-
-**Step 2: [Title]**
-[Content]
-
-... and so on.
-
-USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. FULLY TEST ALL OTHER POSSIBILITIES. YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES."""},
+Example of a valid JSON response:
+```json
+{
+    "title": "Identifying Key Information",
+    "content": "To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...",
+    "next_action": "continue"
+}```"""},
         {"role": "user", "content": prompt},
     ]
     
@@ -91,6 +91,7 @@ USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATION
         total_thinking_time += thinking_time
         
         if step_data is None:
+            steps.append(("Error", "Failed to generate a response", thinking_time))
             break
         
         steps.append((f"Step {step_count}: {step_data['title']}", step_data['content'], thinking_time))
@@ -104,7 +105,7 @@ USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATION
 
         yield steps, None
 
-    if not step_data['title'].startswith("Error"):
+    if step_data and not step_data['title'].startswith("Error"):
         messages.append({"role": "user", "content": "Please provide the final answer based on your reasoning above."})
         
         start_time = time.time()
