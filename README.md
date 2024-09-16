@@ -4,6 +4,16 @@ o1lama is a fun experiment designed to enhance the reasoning capabilities of lar
 ## About
 o1lama is an toy project that runs Llama 3.1 **8B** locally using Ollama. It was forked from [https://github.com/bklieger-groq/g1](https://github.com/bklieger-groq/g1) which runs Llama 3.1 **70B** models on groq for speed. This experiment demonstrates the power of prompted reasoning in visualized steps similar in appearance to o1. It obviously is not intended as a comparison to or full replication of o1, which employs different techniques.
 
+## Features
+- **Local Model Execution**: Runs large language models locally using Ollama, ensuring privacy and reducing latency.
+- **Multiple Model Support**: Allows selection from various models installed locally, not limited to Llama 3.1.
+- **Adjustable Token Limit**: Users can select the maximum token count (512, 1024, 2048, or 4096) to balance between response length and processing time.
+- **Step-by-Step Reasoning**: Displays the AI's thought process in clear, numbered steps, enhancing transparency and understandability.
+- **Interactive UI**: Built with Streamlit for an intuitive and responsive user experience.
+- **Visual Warnings**: Alerts users when responses are truncated due to token limitations, suggesting increases in max token value.
+- **Performance Metrics**: Shows total thinking time, giving users insight into the model's processing speed.
+- **Expandable Steps**: Each reasoning step is presented in an expandable format, allowing users to focus on specific parts of the reasoning process.
+
 ## Other models
 o1lama is now a bit more flexible and will let you select from other models besides Llama 3.1 if you have them installed locally. I've experimented using [Mistral Nemo 12B](https://ollama.com/library/mistral-nemo) with fun results.
 
