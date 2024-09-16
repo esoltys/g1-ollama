@@ -1,8 +1,8 @@
-# o1lama: Using Llama-3.1 on Ollama to create o1-like reasoning chains
+# o1lama
+o1lama is a fun experiment designed to enhance the reasoning capabilities of large language models (LLMs) through o1-like reasoning chains. This approach enables the LLM to “think” and solve logical problems that typically challenge leading models. Unlike o1, all reasoning tokens are displayed, and the application utilizes an open-source model running locally on Ollama.
 
-This is an early prototype of using prompting strategies to improve the LLM's reasoning capabilities through o1-like reasoning chains. This allows the LLM to "think" and solve logical problems that usually otherwise stump leading models. Unlike o1, all the reasoning tokens are shown, and the app uses an open source model running locally on Ollama.
-
-o1lama is experimental and being open sourced to help inspire the open source community to develop new strategies to produce o1-like reasoning. This is an experiment to show the power of prompting reasoning in visualized steps, not a comparison to or full replication of o1, which uses different techniques. Let's build!
+## About
+o1lama is an toy project that runs Llama 3.1 **7B** locally using Ollama. It was forked from [https://github.com/bklieger-groq/g1](https://github.com/bklieger-groq/g1) which runs Llama 3.1 **70B** models on groq for speed. This experiment demonstrates the power of prompted reasoning in visualized steps similar in appearance to o1. It obviously is not intended as a comparison to or full replication of o1, which employs different techniques.
 
 ## Examples:
 
@@ -94,6 +94,6 @@ The application displays the reasoning process and the final answer in the follo
 
 ### Credits
 
-Original g1 app was developed by [Benjamin Klieger](https://x.com/benjaminklieger).
+Original g1 app was developed by [Benjamin Klieger](https://x.com/benjaminklieger) which runs Llama 3.1 70B on groq for speed.
 
-Forked for Ollama by [Eric Soltys](https://www.threads.net/@kootenay_eric)
+Forked for Ollama by [Eric Soltys](https://www.threads.net/@kootenay_eric) to run Llama 3.1 7B locally for fun.
