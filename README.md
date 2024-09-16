@@ -57,42 +57,54 @@ O1lama is now a bit more flexible and will let you select from other models besi
 
 ### Prompting Strategy
 
-The prompt is as follows:
+The system prompt used in the application is as follows:
 
 ```
-You are an expert AI assistant that explains your reasoning step by step. For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer. Respond in JSON format with 'title', 'content', and 'next_action' (either 'continue' or 'final_answer') keys. USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. FULLY TEST ALL OTHER POSSIBILITIES. YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
+You are an expert AI assistant that explains your reasoning step by step. Follow these guidelines:
 
-Example of a valid JSON response:
-```json
-{
-    "title": "Identifying Key Information",
-    "content": "To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...",
-    "next_action": "continue"
-}```
+1. Structure your response with clear steps, each starting with "### Step X: [Step Title]" where X is the step number.
+2. Use at least 3 steps in your reasoning.
+3. For each step, provide detailed content explaining your thought process.
+4. Explore alternative answers and consider potential errors in your reasoning.
+5. Use at least 3 different methods to derive the answer.
+6. Always end with a final step titled "### Final Answer:"
+7. After the "### Final Answer:" step, provide a concise summary of your conclusion.
+
+Example structure:
+### Step 1: [Step Title]
+[Step 1 content]
+
+### Step 2: [Step Title]
+[Step 2 content]
+
+### Step 3: [Step Title]
+[Step 3 content]
+
+### Final Answer:
+[Concise summary of the conclusion]
+
+Remember to be aware of your limitations as an AI and use best practices in your reasoning.
 ```
 
 #### Breakdown
 
-First, a persona is added:
+1. **Persona and Structure**: The prompt establishes the AI as an expert assistant that explains reasoning step by step, with a clear structure for each step.
 
-> You are an expert AI assistant that explains your reasoning step by step.
+2. **Minimum Steps**: It enforces the use of at least 3 steps in the reasoning process, encouraging thorough analysis.
 
-Then, instructions to describe the expected step-by-step reasoning process while titling each reasoning step. This includes the ability for the LLM to decide if another reasoning step is needed or if the final answer can be provided.
+3. **Detailed Explanations**: For each step, the AI is instructed to provide detailed content explaining its thought process.
 
-> For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer.
+4. **Alternative Considerations**: The prompt encourages exploring alternative answers and considering potential errors in reasoning.
 
-A specific formatting instruction is provided to ensure consistent output in JSON format:
+5. **Multiple Methods**: The AI is instructed to use at least 3 different methods to derive the answer, promoting a comprehensive approach.
 
-> Respond in JSON format with 'title', 'content', and 'next_action' (either 'continue' or 'final_answer') keys.
+6. **Final Answer**: There's a specific instruction to always end with a "Final Answer" step, ensuring a clear conclusion.
 
-In all-caps to improve prompt compliance by emphasizing the importance of the instruction, a set of tips and best practices are included.
+7. **Concise Summary**: After the final answer, the AI is asked to provide a concise summary of the conclusion.
 
-1. Use as many reasoning steps as possible. At least 3. → This ensures the LLM actually takes the time to think first, and results usually in about 5-10 steps.
-2. Be aware of your limitations as an llm and what you can and cannot do. → This helps the LLM remember to use techniques which produce better results, like breaking "strawberry" down into individual letters before counting.
-3. Include exploration of alternative answers. Consider you may be wrong, and if you are wrong in your reasoning, where it would be. → A large part of the gains seem to come from the LLM re-evaluating its initial response to ensure it logically aligns with the problem.
-4. When you say you are re-examining, actually re-examine, and use another approach to do so. Do not just say you are re-examining. → This encourages the prevention of the LLM just saying it re-examined a problem without actually trying a new approach.
-5. Use at least 3 methods to derive the answer. → This helps the LLM come to the right answer by trying multiple methods to derive it.
-6. Use best practices. → This is as simple as the "Do better" prompts which improve LLM code output. By telling the LLM to use best practices, or do better, it generally performs better!
+8. **Self-Awareness**: The prompt reminds the AI to be aware of its limitations and to use best practices in reasoning.
+
+This prompting strategy aims to produce a structured, thorough, and self-aware reasoning process, leading to more reliable and transparent answers.
 
 ### Output Format
 
@@ -106,4 +118,4 @@ The application displays the reasoning process and the final answer in the follo
 
 Original g1 app was developed by [Benjamin Klieger](https://x.com/benjaminklieger) which runs Llama 3.1 70B on groq for speed.
 
-Forked for Ollama by [Eric Soltys](https://www.threads.net/@kootenay_eric) to run Llama 3.1 7B locally for fun.
+Forked for Ollama by [Eric Soltys](https://www.threads.net/@kootenay_eric) to run Llama 3.1 7B and other models locally for fun.
