@@ -144,7 +144,7 @@ Remember to be aware of your limitations as an AI and use best practices in your
     yield reasoning_steps, None, total_thinking_time, done_reason
 
 def main():
-    st.set_page_config(page_title="o1lama prototype", page_icon="🧠", layout="wide")
+    st.set_page_config(page_title="o1lama", page_icon="🦙", layout="wide")
     
     st.title("o1lama")
     
