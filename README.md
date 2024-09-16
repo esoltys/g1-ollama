@@ -4,21 +4,31 @@ o1lama is a fun experiment designed to enhance the reasoning capabilities of lar
 ## About
 o1lama is an toy project that runs Llama 3.1 **7B** locally using Ollama. It was forked from [https://github.com/bklieger-groq/g1](https://github.com/bklieger-groq/g1) which runs Llama 3.1 **70B** models on groq for speed. This experiment demonstrates the power of prompted reasoning in visualized steps similar in appearance to o1. It obviously is not intended as a comparison to or full replication of o1, which employs different techniques.
 
+## Other models
+O1lama is now a bit more flexible and will let you select from other models besides Llama 3.1 if you have them installed locally. I've experimented using Mistal Nemo 12B with fun results.
+
 ## Examples:
 
 ### How many 'R's are in the word strawberry?
 
-O1lama gets the wrong answer, but tries to reason. It's interesting that it's blind to the 3rd "r" in Step 3.
+**Llama-3.1 7B** gets it wrong
 
-![Strawberry example](examples/strawberry.png)
+![Strawberry example using Llama 3.1](examples/strawberry.png)
 
+**Mistral-Nemo 12B** gets it right
+
+![Strawberry example using Mistral-Nemo](examples/strawberry-mistral-nemo.png)
 ---
 
 ### Which is larger, .9 or .11?
 
-O1lama gets this one right.
+**Llama-3.1 7B** gets it right
 
-![0.9 or 0.11 example](examples/math.png)
+![0.9 or 0.11 example using Llama 3.1](examples/math.png)
+
+**Mistral-Nemo 12B** confidently gets it wrong three ways
+
+![0.9 or 0.11 example using Mistral-Nemo](examples/math-mistral-nemo.png)
 
 ### Quickstart
 
