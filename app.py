@@ -82,7 +82,7 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
 
     return None
 
-def generate_response(prompt, model_name):
+def generate_response(prompt, model_name, max_tokens):
     messages = [
         {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. Follow these guidelines:
 
@@ -116,7 +116,7 @@ Remember to be aware of your limitations as an AI and use best practices in your
     
     while True:
         start_time = time.time()
-        step_data_list = make_api_call(messages, 500, model_name)
+        step_data_list = make_api_call(messages, max_tokens, model_name)
         end_time = time.time()
         thinking_time = end_time - start_time
         total_thinking_time += thinking_time
@@ -147,6 +147,10 @@ def main():
     available_models = get_available_models()
     selected_model = st.selectbox("Select a model:", available_models)
     
+    # Add dropdown for token selection with 1024 as default
+    token_options = [512, 1024, 2048, 4096]
+    selected_tokens = st.selectbox("Select max tokens:", token_options, index=token_options.index(1024))
+    
     # Text input for user query
     user_query = st.text_input("Enter your query:", placeholder="e.g., How many 'R's are in the word strawberry?")
     
@@ -166,7 +170,7 @@ def main():
         # Generate and display the response
         final_reasoning_steps = []
         final_answer = None
-        for reasoning_steps, answer, total_thinking_time in generate_response(user_query, selected_model):
+        for reasoning_steps, answer, total_thinking_time in generate_response(user_query, selected_model, selected_tokens):
             final_reasoning_steps = reasoning_steps
             if answer:
                 final_answer = answer
@@ -187,6 +191,7 @@ def main():
         
         # Clear the "Generating response..." message after completion
         generating_message.empty()
+
 
 if __name__ == "__main__":
     main()
