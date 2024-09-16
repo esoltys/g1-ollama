@@ -2,7 +2,7 @@
 o1lama is a fun experiment designed to enhance the reasoning capabilities of large language models (LLMs) through o1-like reasoning chains. This approach enables the LLM to “think” and solve logical problems that typically challenge leading models. Unlike o1, all reasoning tokens are displayed, and the application utilizes an open-source model running locally on Ollama.
 
 ## About
-o1lama is an toy project that runs Llama 3.1 **7B** locally using Ollama. It was forked from [https://github.com/bklieger-groq/g1](https://github.com/bklieger-groq/g1) which runs Llama 3.1 **70B** models on groq for speed. This experiment demonstrates the power of prompted reasoning in visualized steps similar in appearance to o1. It obviously is not intended as a comparison to or full replication of o1, which employs different techniques.
+o1lama is an toy project that runs Llama 3.1 **8B** locally using Ollama. It was forked from [https://github.com/bklieger-groq/g1](https://github.com/bklieger-groq/g1) which runs Llama 3.1 **70B** models on groq for speed. This experiment demonstrates the power of prompted reasoning in visualized steps similar in appearance to o1. It obviously is not intended as a comparison to or full replication of o1, which employs different techniques.
 
 ## Other models
 o1lama is now a bit more flexible and will let you select from other models besides Llama 3.1 if you have them installed locally. I've experimented using [Mistral Nemo 12B](https://ollama.com/library/mistral-nemo) with fun results.
@@ -11,7 +11,7 @@ o1lama is now a bit more flexible and will let you select from other models besi
 
 ### How many 'R's are in the word strawberry?
 
-**Llama-3.1 7B** gets it wrong
+**Llama-3.1 8B** gets it wrong
 
 ![Strawberry example using Llama 3.1](examples/strawberry.png)
 
@@ -22,7 +22,7 @@ o1lama is now a bit more flexible and will let you select from other models besi
 
 ### Which is larger, .9 or .11?
 
-**Llama-3.1 7B** gets it right
+**Llama-3.1 8B** gets it right
 
 ![0.9 or 0.11 example using Llama 3.1](examples/math.png)
 
@@ -118,4 +118,4 @@ The application displays the reasoning process and the final answer in the follo
 
 Original g1 app was developed by [Benjamin Klieger](https://x.com/benjaminklieger) which runs Llama 3.1 70B on groq for speed.
 
-Forked for Ollama by [Eric Soltys](https://www.threads.net/@kootenay_eric) to run Llama 3.1 7B and other models locally for fun.
+Forked for Ollama by [Eric Soltys](https://www.threads.net/@kootenay_eric) to run Llama 3.1 8B and other models locally for fun.
