@@ -34,29 +34,31 @@ def make_api_call(messages, max_tokens, is_final_answer=False):
             # Extract all JSON objects from the content
             json_objects = re.findall(r'```json\n(.*?)\n```', content, re.DOTALL)
             
-            if json_objects:
-                # Use the last JSON object (most recent step)
-                last_json = json_objects[-1]
+            parsed_steps = []
+            for json_obj in json_objects:
                 try:
-                    parsed_content = json.loads(last_json)
+                    parsed_content = json.loads(json_obj)
                     if isinstance(parsed_content, dict) and all(key in parsed_content for key in ['title', 'content', 'next_action']):
-                        return parsed_content
+                        parsed_steps.append(parsed_content)
                 except json.JSONDecodeError:
-                    pass
+                    continue
+            
+            if parsed_steps:
+                return parsed_steps
             
             # If no valid JSON objects found, return an error
-            return {
+            return [{
                 "title": "Error",
                 "content": "Failed to parse response as JSON",
                 "next_action": "final_answer"
-            }
+            }]
         
         except Exception as e:
             if attempt == 2:
                 if is_final_answer:
-                    return {"title": "Error", "content": f"Failed to generate final answer after 3 attempts. Error: {str(e)}"}
+                    return [{"title": "Error", "content": f"Failed to generate final answer after 3 attempts. Error: {str(e)}"}]
                 else:
-                    return {"title": "Error", "content": f"Failed to generate step after 3 attempts. Error: {str(e)}", "next_action": "final_answer"}
+                    return [{"title": "Error", "content": f"Failed to generate step after 3 attempts. Error: {str(e)}", "next_action": "final_answer"}]
             time.sleep(1)  # Wait for 1 second before retrying
 
     return None
@@ -80,38 +82,35 @@ Example of a valid JSON response:
     steps = []
     step_count = 1
     total_thinking_time = 0
+    final_answer_reached = False
     
-    while True:
+    while not final_answer_reached:
         start_time = time.time()
-        step_data = make_api_call(messages, 300)
+        step_data_list = make_api_call(messages, 1000)  # Increased token limit
         end_time = time.time()
         thinking_time = end_time - start_time
         total_thinking_time += thinking_time
         
-        steps.append((f"Step {step_count}: {step_data['title']}", step_data['content'], thinking_time))
-        
-        messages.append({"role": "assistant", "content": json.dumps(step_data)})
-        
-        if step_data['next_action'] == 'final_answer':
+        if step_data_list is None:
+            steps.append(("Error", "Failed to generate a response", thinking_time))
             break
         
-        step_count += 1
-
-        yield steps, None  # We're not yielding the total time until the end
-
-    # Generate final answer
-    messages.append({"role": "user", "content": "Please provide the final answer based on your reasoning above."})
-    
-    start_time = time.time()
-    final_data = make_api_call(messages, 200, is_final_answer=True)
-    end_time = time.time()
-    thinking_time = end_time - start_time
-    total_thinking_time += thinking_time
-    
-    steps.append(("Final Answer", final_data['content'], thinking_time))
+        for step_data in step_data_list:
+            if step_data['title'].startswith("Final Answer"):
+                steps.append(("Final Answer", step_data['content'], thinking_time / len(step_data_list)))
+                final_answer_reached = True
+            else:
+                steps.append((f"Step {step_count}: {step_data['title']}", step_data['content'], thinking_time / len(step_data_list)))
+                step_count += 1
+            
+            messages.append({"role": "assistant", "content": json.dumps(step_data)})
+            
+            if step_data['next_action'] == 'final_answer' or step_data['title'].startswith("Error"):
+                final_answer_reached = True
+        
+        yield steps, None
 
     yield steps, total_thinking_time
-
 
 def main():
     st.set_page_config(page_title="o1lama prototype", page_icon="🧠", layout="wide")
