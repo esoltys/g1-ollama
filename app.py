@@ -5,13 +5,22 @@ import time
 import re
 
 OLLAMA_API_URL = "http://localhost:11434/api/chat"
-MODEL_NAME = "llama3.1"  # Change this to the model you have in Ollama
 
-def make_api_call(messages, max_tokens, is_final_answer=False):
+def get_available_models():
+    try:
+        response = requests.get("http://localhost:11434/api/tags")
+        response.raise_for_status()
+        models = response.json()["models"]
+        return [model["name"] for model in models]
+    except Exception as e:
+        st.error(f"Failed to fetch models: {str(e)}")
+        return ["llama3.1"]  # Return default model if fetching fails
+
+def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
     for attempt in range(3):
         try:
             payload = {
-                "model": MODEL_NAME,
+                "model": model_name,
                 "messages": messages,
                 "stream": False,
                 "options": {
@@ -31,25 +40,33 @@ def make_api_call(messages, max_tokens, is_final_answer=False):
             
             content = response_json['message']['content']
             
-            # Extract all JSON objects from the content
-            json_objects = re.findall(r'```json\n(.*?)\n```', content, re.DOTALL)
+            # Parse the multi-step response
+            steps = re.split(r'\*\*Step \d+:|\*\*Conclusion|\*\*Final Answer:', content)
+            steps = [step.strip() for step in steps if step.strip()]
             
             parsed_steps = []
-            for json_obj in json_objects:
-                try:
-                    parsed_content = json.loads(json_obj)
-                    if isinstance(parsed_content, dict) and all(key in parsed_content for key in ['title', 'content', 'next_action']):
-                        parsed_steps.append(parsed_content)
-                except json.JSONDecodeError:
-                    continue
+            for i, step in enumerate(steps):
+                if i == len(steps) - 1 and ("Conclusion" in content or "Final Answer" in content):
+                    title = "Final Answer"
+                    next_action = "final_answer"
+                else:
+                    title = f"Step {i+1}"
+                    next_action = "continue"
+                
+                parsed_steps.append({
+                    "title": title,
+                    "content": step,
+                    "next_action": next_action
+                })
             
+            # If we found valid steps, return them
             if parsed_steps:
                 return parsed_steps
             
-            # If no valid JSON objects found, return an error
+            # If no valid steps found, create a single step from the entire content
             return [{
-                "title": "Error",
-                "content": "Failed to parse response as JSON",
+                "title": "Response",
+                "content": content,
                 "next_action": "final_answer"
             }]
         
@@ -63,20 +80,10 @@ def make_api_call(messages, max_tokens, is_final_answer=False):
 
     return None
 
-def generate_response(prompt):
+def generate_response(prompt, model_name):
     messages = [
-        {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer. Respond in JSON format with 'title', 'content', and 'next_action' (either 'continue' or 'final_answer') keys. USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. FULLY TEST ALL OTHER POSSIBILITIES. YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
-
-Example of a valid JSON response:
-```json
-{
-    "title": "Identifying Key Information",
-    "content": "To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...",
-    "next_action": "continue"
-}```
-"""},
+        {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer. USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. FULLY TEST ALL OTHER POSSIBILITIES. YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES."""},
         {"role": "user", "content": prompt},
-        {"role": "assistant", "content": "Thank you! I will now think step by step following my instructions, starting at the beginning after decomposing the problem."}
     ]
     
     reasoning_steps = []
@@ -85,7 +92,7 @@ Example of a valid JSON response:
     
     while True:
         start_time = time.time()
-        step_data_list = make_api_call(messages, 500)  # Increased token limit
+        step_data_list = make_api_call(messages, 500, model_name)
         end_time = time.time()
         thinking_time = end_time - start_time
         total_thinking_time += thinking_time
@@ -96,64 +103,66 @@ Example of a valid JSON response:
             step_count += 1
             
             if step_data['next_action'] == 'final_answer':
-                yield reasoning_steps, None, None  # Yield reasoning steps without final answer
-                
-                # Generate final answer
-                messages.append({"role": "user", "content": "Please provide the final answer based on your reasoning above."})
-                
-                start_time = time.time()
-                final_data_list = make_api_call(messages, 200, is_final_answer=True)
-                end_time = time.time()
-                final_thinking_time = end_time - start_time
-                total_thinking_time += final_thinking_time
-                
-                if final_data_list:
-                    final_data = final_data_list[0]  # Take the first (and hopefully only) final answer
-                    yield reasoning_steps, ("Final Answer", final_data['content'], final_thinking_time), total_thinking_time
+                yield reasoning_steps, (step_data['title'], step_data['content'], thinking_time), total_thinking_time
                 return
-
-        yield reasoning_steps, None, None  # Yield intermediate steps
+        
+        # Always yield reasoning steps, even if there's only one
+        yield reasoning_steps, None, None
 
     # This line should not be reached, but just in case:
     yield reasoning_steps, None, total_thinking_time
 
-
 def main():
     st.set_page_config(page_title="o1lama prototype", page_icon="🧠", layout="wide")
     
-    st.title(f"o1lama: Using {MODEL_NAME} on Ollama to create o1-like reasoning chains")
+    st.title("o1lama")
     
-    st.markdown("""
-    This is an early prototype of using prompting to create o1-like reasoning chains to improve output accuracy. It is not perfect and accuracy has yet to be formally evaluated. It is powered by Ollama running locally!
-                
-    Open source [repository here](https://github.com/esoltys/o1lama)
-    """)
+    st.markdown("Using Ollama to create reasoning chains that run locally and are similar in appearance to o1.")
+    
+    # Get available models and create a dropdown menu
+    available_models = get_available_models()
+    selected_model = st.selectbox("Select a model:", available_models)
     
     # Text input for user query
     user_query = st.text_input("Enter your query:", placeholder="e.g., How many 'R's are in the word strawberry?")
     
+    # Create placeholder containers
+    generating_message = st.empty()
+    response_container = st.empty()
+    time_container = st.empty()
+    
     if user_query:
-        st.write("Generating response...")
+        # Clear previous response
+        response_container.empty()
+        time_container.empty()
         
-        # Create empty elements to hold the generated text and total time
-        response_container = st.empty()
-        time_container = st.empty()
+        # Show "Generating response..." message
+        generating_message.write("Generating response...")
         
         # Generate and display the response
-        for reasoning_steps, final_answer, total_thinking_time in generate_response(user_query):
-            with response_container.container():
-                st.markdown("### Reasoning")
-                for i, (title, content, thinking_time) in enumerate(reasoning_steps):
-                    with st.expander(title, expanded=True):
-                        st.markdown(content.replace('\n', '<br>'), unsafe_allow_html=True)
-                
-                if final_answer:
-                    st.markdown("### Answer")
-                    st.markdown(final_answer[1].replace('\n', '<br>'), unsafe_allow_html=True)
+        final_reasoning_steps = []
+        final_answer = None
+        for reasoning_steps, answer, total_thinking_time in generate_response(user_query, selected_model):
+            final_reasoning_steps = reasoning_steps
+            if answer:
+                final_answer = answer
+
+        with response_container.container():
+            st.markdown("### Reasoning")
+            for step in final_reasoning_steps[:-1]:  # Exclude the last step
+                with st.expander(step[0], expanded=True):
+                    st.markdown(step[1].replace('\n', '<br>'), unsafe_allow_html=True)
             
-            # Only show total time when it's available at the end
-            if total_thinking_time is not None:
-                time_container.markdown(f"**Total thinking time: {total_thinking_time:.2f} seconds**")
+            if final_answer:
+                st.markdown("### Answer")
+                st.markdown(final_answer[1].replace('\n', '<br>'), unsafe_allow_html=True)
+        
+        # Show total time
+        if total_thinking_time is not None:
+            time_container.markdown(f"**Total thinking time: {total_thinking_time:.2f} seconds**")
+        
+        # Clear the "Generating response..." message after completion
+        generating_message.empty()
 
 if __name__ == "__main__":
     main()
