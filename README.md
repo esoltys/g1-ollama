@@ -104,4 +104,5 @@ In all-caps to improve prompt compliance by emphasizing the importance of the in
 ### Credits
 
 Original g1 app was developed by [Benjamin Klieger](https://x.com/benjaminklieger).
+
 Forked for Ollama by [Eric Soltys](https://www.threads.net/@kootenay_eric)
