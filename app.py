@@ -130,7 +130,7 @@ Remember to be aware of your limitations as an AI and use best practices in your
         total_thinking_time += thinking_time
         
         for step_data in step_data_list:
-            reasoning_steps.append((step_data['title'], step_data['content'], thinking_time / len(step_data_list)))
+            reasoning_steps.append((step_data['title'].strip(), step_data['content'].strip(), thinking_time / len(step_data_list)))
             messages.append({"role": "assistant", "content": json.dumps(step_data)})
             
             if step_data['next_action'] == 'final_answer':
@@ -188,12 +188,12 @@ def main():
             st.markdown("### Reasoning")
             for step in final_reasoning_steps[:-1]:  # Exclude the last step
                 with st.expander(step[0], expanded=True):
-                    st.markdown(step[1].replace('\n', '<br>'), unsafe_allow_html=True)
+                    st.markdown(step[1], unsafe_allow_html=True)
             
             if final_answer:
                 st.markdown(final_answer[0])  # Display the full "### Final Answer:" title
-                st.markdown(final_answer[1].replace('\n', '<br>'), unsafe_allow_html=True)
-        
+                st.markdown(final_answer[1], unsafe_allow_html=True)
+
         # Show total time
         if total_thinking_time is not None:
             time_container.markdown(f"**Total thinking time: {total_thinking_time:.2f} seconds**")
