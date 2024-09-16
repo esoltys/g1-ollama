@@ -17,28 +17,9 @@ o1lama is an toy project that runs Llama 3.1 **8B** locally using Ollama. It was
 ## Other models
 o1lama is now a bit more flexible and will let you select from other models besides Llama 3.1 if you have them installed locally. I've experimented using [Mistral Nemo 12B](https://ollama.com/library/mistral-nemo) with fun results.
 
-## Examples:
+## Example:
 
-### How many 'R's are in the word strawberry?
-
-**Llama-3.1 8B** gets it wrong
-
-![Strawberry example using Llama 3.1](examples/strawberry.png)
-
-**Mistral-Nemo 12B** gets it right
-
-![Strawberry example using Mistral-Nemo](examples/strawberry-mistral-nemo.png)
----
-
-### Which is larger, .9 or .11?
-
-**Llama-3.1 8B** gets it right
-
-![0.9 or 0.11 example using Llama 3.1](examples/math.png)
-
-**Mistral-Nemo 12B** confidently gets it wrong three ways
-
-![0.9 or 0.11 example using Mistral-Nemo](examples/math-mistral-nemo.png)
+![Example](screenshot.png)
 
 ### Quickstart
 
