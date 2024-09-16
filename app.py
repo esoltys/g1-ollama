@@ -79,38 +79,44 @@ Example of a valid JSON response:
         {"role": "assistant", "content": "Thank you! I will now think step by step following my instructions, starting at the beginning after decomposing the problem."}
     ]
     
-    steps = []
+    reasoning_steps = []
     step_count = 1
     total_thinking_time = 0
-    final_answer_reached = False
     
-    while not final_answer_reached:
+    while True:
         start_time = time.time()
-        step_data_list = make_api_call(messages, 1000)  # Increased token limit
+        step_data_list = make_api_call(messages, 500)  # Increased token limit
         end_time = time.time()
         thinking_time = end_time - start_time
         total_thinking_time += thinking_time
         
-        if step_data_list is None:
-            steps.append(("Error", "Failed to generate a response", thinking_time))
-            break
-        
         for step_data in step_data_list:
-            if step_data['title'].startswith("Final Answer"):
-                steps.append(("Final Answer", step_data['content'], thinking_time / len(step_data_list)))
-                final_answer_reached = True
-            else:
-                steps.append((f"Step {step_count}: {step_data['title']}", step_data['content'], thinking_time / len(step_data_list)))
-                step_count += 1
-            
+            reasoning_steps.append((f"Step {step_count}: {step_data['title']}", step_data['content'], thinking_time / len(step_data_list)))
             messages.append({"role": "assistant", "content": json.dumps(step_data)})
+            step_count += 1
             
-            if step_data['next_action'] == 'final_answer' or step_data['title'].startswith("Error"):
-                final_answer_reached = True
-        
-        yield steps, None
+            if step_data['next_action'] == 'final_answer':
+                yield reasoning_steps, None, None  # Yield reasoning steps without final answer
+                
+                # Generate final answer
+                messages.append({"role": "user", "content": "Please provide the final answer based on your reasoning above."})
+                
+                start_time = time.time()
+                final_data_list = make_api_call(messages, 200, is_final_answer=True)
+                end_time = time.time()
+                final_thinking_time = end_time - start_time
+                total_thinking_time += final_thinking_time
+                
+                if final_data_list:
+                    final_data = final_data_list[0]  # Take the first (and hopefully only) final answer
+                    yield reasoning_steps, ("Final Answer", final_data['content'], final_thinking_time), total_thinking_time
+                return
 
-    yield steps, total_thinking_time
+        yield reasoning_steps, None, None  # Yield intermediate steps
+
+    # This line should not be reached, but just in case:
+    yield reasoning_steps, None, total_thinking_time
+
 
 def main():
     st.set_page_config(page_title="o1lama prototype", page_icon="🧠", layout="wide")
@@ -134,15 +140,16 @@ def main():
         time_container = st.empty()
         
         # Generate and display the response
-        for steps, total_thinking_time in generate_response(user_query):
+        for reasoning_steps, final_answer, total_thinking_time in generate_response(user_query):
             with response_container.container():
-                for i, (title, content, thinking_time) in enumerate(steps):
-                    if title.startswith("Final Answer"):
-                        st.markdown(f"### {title}")
+                st.markdown("### Reasoning")
+                for i, (title, content, thinking_time) in enumerate(reasoning_steps):
+                    with st.expander(title, expanded=True):
                         st.markdown(content.replace('\n', '<br>'), unsafe_allow_html=True)
-                    else:
-                        with st.expander(title, expanded=True):
-                            st.markdown(content.replace('\n', '<br>'), unsafe_allow_html=True)
+                
+                if final_answer:
+                    st.markdown("### Answer")
+                    st.markdown(final_answer[1].replace('\n', '<br>'), unsafe_allow_html=True)
             
             # Only show total time when it's available at the end
             if total_thinking_time is not None:
