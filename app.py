@@ -119,14 +119,14 @@ USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATION
     yield steps, total_thinking_time
 
 def main():
-    st.set_page_config(page_title="g1 prototype", page_icon="🧠", layout="wide")
+    st.set_page_config(page_title="o1lama prototype", page_icon="🧠", layout="wide")
     
-    st.title(f"g1: Using {MODEL_NAME} on Ollama to create o1-like reasoning chains")
+    st.title(f"o1lama: Using {MODEL_NAME} on Ollama to create o1-like reasoning chains")
     
     st.markdown("""
     This is an early prototype of using prompting to create o1-like reasoning chains to improve output accuracy. It is not perfect and accuracy has yet to be formally evaluated. It is powered by Ollama running locally!
                 
-    Open source [repository here](https://github.com/bklieger-groq)
+    Open source [repository here](https://github.com/esoltys/o1lama)
     """)
     
     # Text input for user query
