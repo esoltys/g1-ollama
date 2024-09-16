@@ -1,44 +1,82 @@
 import streamlit as st
-import groq
-import os
+import requests
 import json
 import time
+import re
 
-client = groq.Groq()
+OLLAMA_API_URL = "http://localhost:11434/api/chat"
+MODEL_NAME = "llama3.1"  # Change this to the model you have in Ollama
 
 def make_api_call(messages, max_tokens, is_final_answer=False):
     for attempt in range(3):
         try:
-            response = client.chat.completions.create(
-                model="llama-3.1-70b-versatile",
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=0.2,
-                response_format={"type": "json_object"}
-            )
-            return json.loads(response.choices[0].message.content)
+            payload = {
+                "model": MODEL_NAME,
+                "messages": messages,
+                "stream": False,
+                "options": {
+                    "num_predict": max_tokens,
+                    "temperature": 0.2
+                }
+            }
+            response = requests.post(OLLAMA_API_URL, json=payload)
+            response.raise_for_status()
+            
+            print(f"Raw API response: {response.text}")
+            
+            response_json = response.json()
+            
+            if 'message' not in response_json or 'content' not in response_json['message']:
+                raise ValueError(f"Unexpected API response structure: {response_json}")
+            
+            content = response_json['message']['content']
+            
+            if not content.strip():
+                return None
+            
+            # Extract steps from the content
+            steps = re.findall(r'\*\*Step \d+: (.+?)\*\*\n(.+?)(?=\n\*\*|\Z)', content, re.DOTALL)
+            
+            if steps:
+                last_step = steps[-1]
+                return {
+                    "title": last_step[0],
+                    "content": last_step[1].strip(),
+                    "next_action": "continue" if len(steps) == 1 else "final_answer"
+                }
+            else:
+                return {
+                    "title": "Raw Response",
+                    "content": content,
+                    "next_action": "final_answer" if is_final_answer else "continue"
+                }
+        
         except Exception as e:
+            print(f"Attempt {attempt + 1} failed. Error: {str(e)}")
             if attempt == 2:
-                if is_final_answer:
-                    return {"title": "Error", "content": f"Failed to generate final answer after 3 attempts. Error: {str(e)}"}
-                else:
-                    return {"title": "Error", "content": f"Failed to generate step after 3 attempts. Error: {str(e)}", "next_action": "final_answer"}
+                return {
+                    "title": "Error",
+                    "content": f"Failed to generate {'final answer' if is_final_answer else 'step'} after 3 attempts. Error: {str(e)}",
+                    "next_action": "final_answer"
+                }
             time.sleep(1)  # Wait for 1 second before retrying
+
+    return None
 
 def generate_response(prompt):
     messages = [
-        {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer. Respond in JSON format with 'title', 'content', and 'next_action' (either 'continue' or 'final_answer') keys. USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. FULLY TEST ALL OTHER POSSIBILITIES. YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
+        {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. For each step, provide a title that describes what you're doing in that step, along with the content. Decide if you need another step or if you're ready to give the final answer. Format your response as follows:
 
-Example of a valid JSON response:
-```json
-{
-    "title": "Identifying Key Information",
-    "content": "To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...",
-    "next_action": "continue"
-}```
-"""},
+**Step 1: [Title]**
+[Content]
+
+**Step 2: [Title]**
+[Content]
+
+... and so on.
+
+USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. FULLY TEST ALL OTHER POSSIBILITIES. YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES."""},
         {"role": "user", "content": prompt},
-        {"role": "assistant", "content": "Thank you! I will now think step by step following my instructions, starting at the beginning after decomposing the problem."}
     ]
     
     steps = []
@@ -47,43 +85,46 @@ Example of a valid JSON response:
     
     while True:
         start_time = time.time()
-        step_data = make_api_call(messages, 300)
+        step_data = make_api_call(messages, 500)
         end_time = time.time()
         thinking_time = end_time - start_time
         total_thinking_time += thinking_time
+        
+        if step_data is None:
+            break
         
         steps.append((f"Step {step_count}: {step_data['title']}", step_data['content'], thinking_time))
         
         messages.append({"role": "assistant", "content": json.dumps(step_data)})
         
-        if step_data['next_action'] == 'final_answer':
+        if step_data['next_action'] == 'final_answer' or step_data['title'].startswith("Error"):
             break
         
         step_count += 1
 
-        # Yield after each step for Streamlit to update
-        yield steps, None  # We're not yielding the total time until the end
+        yield steps, None
 
-    # Generate final answer
-    messages.append({"role": "user", "content": "Please provide the final answer based on your reasoning above."})
-    
-    start_time = time.time()
-    final_data = make_api_call(messages, 200, is_final_answer=True)
-    end_time = time.time()
-    thinking_time = end_time - start_time
-    total_thinking_time += thinking_time
-    
-    steps.append(("Final Answer", final_data['content'], thinking_time))
+    if not step_data['title'].startswith("Error"):
+        messages.append({"role": "user", "content": "Please provide the final answer based on your reasoning above."})
+        
+        start_time = time.time()
+        final_data = make_api_call(messages, 200, is_final_answer=True)
+        end_time = time.time()
+        thinking_time = end_time - start_time
+        total_thinking_time += thinking_time
+        
+        if final_data:
+            steps.append(("Final Answer", final_data['content'], thinking_time))
 
     yield steps, total_thinking_time
 
 def main():
     st.set_page_config(page_title="g1 prototype", page_icon="🧠", layout="wide")
     
-    st.title("g1: Using Llama-3.1 70b on Groq to create o1-like reasoning chains")
+    st.title(f"g1: Using {MODEL_NAME} on Ollama to create o1-like reasoning chains")
     
     st.markdown("""
-    This is an early prototype of using prompting to create o1-like reasoning chains to improve output accuracy. It is not perfect and accuracy has yet to be formally evaluated. It is powered by Groq so that the reasoning step is fast!
+    This is an early prototype of using prompting to create o1-like reasoning chains to improve output accuracy. It is not perfect and accuracy has yet to be formally evaluated. It is powered by Ollama running locally!
                 
     Open source [repository here](https://github.com/bklieger-groq)
     """)
