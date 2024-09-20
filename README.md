@@ -7,7 +7,6 @@ The experiment demonstrates the power of prompted reasoning in visualized steps 
 The project now uses the official Ollama Python bindings for improved integration and performance, allowing users to explore the potential of LLMs on their local machines. [Mistral Nemo 12B](https://ollama.com/library/mistral-nemo) is a good model to try for comparison.
 
 ## Features
-- **Official Ollama Bindings**: Utilizes the official Ollama Python library for improved integration and performance.
 - **Local Model Execution**: Runs large language models locally using Ollama, ensuring privacy and reducing latency.
 - **Multiple Model Support**: Allows selection from various models installed locally, not limited to Llama 3.1.
 - **Adjustable Token Limit**: Users can select the maximum token count (512, 1024, 2048, or 4096) to balance between response length and processing time.
@@ -16,6 +15,8 @@ The project now uses the official Ollama Python bindings for improved integratio
 - **Visual Warnings**: Alerts users when responses are truncated due to token limitations, suggesting increases in max token value.
 - **Performance Metrics**: Shows total thinking time, giving users insight into the model's processing speed.
 - **Expandable Steps**: Each reasoning step is presented in an expandable format, allowing users to focus on specific parts of the reasoning process.
+- **Knowledge Graph**: Visualizes the relationships between different reasoning steps using a network graph.
+- **Strongest Path**: Highlights the most relevant path of reasoning in the knowledge graph.
 
 
 ## Example:
@@ -50,64 +51,26 @@ The project now uses the official Ollama Python bindings for improved integratio
 
 ### Prompting Strategy
 
-The system prompt used in the application is as follows:
+The system prompt used in the application encourages the AI to:
 
-```
-You are an expert AI assistant that explains your reasoning step by step. Follow these guidelines:
-
-1. Structure your response with clear steps, each starting with "### Step X: [Step Title]" where X is the step number.
-2. Use at least 3 steps in your reasoning.
-3. For each step, provide detailed content explaining your thought process.
-4. Explore alternative answers and consider potential errors in your reasoning.
+1. Structure responses with clear, numbered steps.
+2. Use at least 3 steps in reasoning before providing a final answer.
+3. Provide detailed explanations for each step.
+4. Explore alternative answers and consider potential errors.
 5. Use at least 3 different methods to derive the answer.
-6. Always end with a final step titled "### Final Answer:"
-7. After the "### Final Answer:" step, provide a concise summary of your conclusion.
+6. End with a "Final Answer" step containing a concise summary.
 
-Example structure:
-### Step 1: [Step Title]
-[Step 1 content]
-
-### Step 2: [Step Title]
-[Step 2 content]
-
-### Step 3: [Step Title]
-[Step 3 content]
-
-### Final Answer:
-[Concise summary of the conclusion]
-
-Remember to be aware of your limitations as an AI and use best practices in your reasoning.
-```
-
-#### Breakdown
-
-1. **Persona and Structure**: The prompt establishes the AI as an expert assistant that explains reasoning step by step, with a clear structure for each step.
-
-2. **Minimum Steps**: It enforces the use of at least 3 steps in the reasoning process, encouraging thorough analysis.
-
-3. **Detailed Explanations**: For each step, the AI is instructed to provide detailed content explaining its thought process.
-
-4. **Alternative Considerations**: The prompt encourages exploring alternative answers and considering potential errors in reasoning.
-
-5. **Multiple Methods**: The AI is instructed to use at least 3 different methods to derive the answer, promoting a comprehensive approach.
-
-6. **Final Answer**: There's a specific instruction to always end with a "Final Answer" step, ensuring a clear conclusion.
-
-7. **Concise Summary**: After the final answer, the AI is asked to provide a concise summary of the conclusion.
-
-8. **Self-Awareness**: The prompt reminds the AI to be aware of its limitations and to use best practices in reasoning.
-
-This prompting strategy aims to produce a structured, thorough, and self-aware reasoning process, leading to more reliable and transparent answers.
+The full prompt can be found in the `generate_response` function in `app.py`.
 
 ### Output Format
 
-The application displays the reasoning process and the final answer in the following format:
-
-1. **Reasoning**: Each reasoning step is shown as an expandable section, with the step title and content.
-2. **Answer**: The final answer is displayed after all reasoning steps.
-3. **Total thinking time**: The total time taken by the LLM to generate the response is shown at the end.
+1. **Reasoning Steps**: Each step is shown as an expandable section with a title and content.
+2. **Final Answer**: Displayed after all reasoning steps.
+3. **Total Thinking Time**: The time taken by the LLM to generate the response.
+4. **Knowledge Graph**: A visual representation of the relationships between reasoning steps.
 
 ### Acknowledgements
 
-Original g1 app was developed by [Benjamin Klieger](https://x.com/benjaminklieger) which runs Llama 3.1 70B on groq for speed.
+Forked from [g1](https://github.com/bklieger-groq/g1) which is an o1-like reasoning chain on groq by [Benjamin Klieger](https://github.com/bklieger-groq)
 
+I liked the [Local Knowledge Graph](https://github.com/punnerud/Local_Knowledge_Graph) by [Morten Punnerud-Engelstad](https://github.com/punnerud)
