@@ -84,12 +84,12 @@ def generate_response(prompt, model_name, max_tokens):
         {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. Follow these guidelines:
 
 1. Structure your response with clear steps, each starting with "### Step X: [Step Title]" where X is the step number.
-2. Use at least 3 steps in your reasoning.
+2. Use at least 3 steps in your reasoning BEFORE providing the final answer.
 3. For each step, provide detailed content explaining your thought process.
 4. Explore alternative answers and consider potential errors in your reasoning.
 5. Use at least 3 different methods to derive the answer.
-6. Always end with a final step titled "### Final Answer:"
-7. After the "### Final Answer:" step, provide a concise summary of your conclusion.
+6. After your reasoning steps, end with a final step titled "### Final Answer:"
+7. In the "### Final Answer:" step, provide a concise summary of your conclusion.
 
 Example structure:
 ### Step 1: [Step Title]
@@ -101,10 +101,13 @@ Example structure:
 ### Step 3: [Step Title]
 [Step 3 content]
 
+### Step 4: [Step Title]
+[Step 4 content]
+
 ### Final Answer:
 [Concise summary of the conclusion]
 
-Remember to be aware of your limitations as an AI and use best practices in your reasoning."""},
+Remember to be aware of your limitations as an AI and use best practices in your reasoning. Aim for at least 4-5 steps before the final answer to ensure thorough analysis."""},
         {"role": "user", "content": prompt},
     ]
     
