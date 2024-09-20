@@ -3,6 +3,10 @@ import ollama
 import json
 import time
 import re
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+import networkx as nx
+import plotly.graph_objects as go
 
 def get_available_models():
     try:
@@ -79,6 +83,13 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
 
     return None, None
 
+def get_embedding(text, model_name):
+    response = ollama.embeddings(model=model_name, prompt=text)
+    return np.array(response['embedding'])
+
+def calculate_similarity(embedding1, embedding2):
+    return cosine_similarity([embedding1], [embedding2])[0][0]
+
 def generate_response(prompt, model_name, max_tokens):
     messages = [
         {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. Follow these guidelines:
@@ -114,21 +125,49 @@ Remember to be aware of your limitations as an AI and use best practices in your
     reasoning_steps = []
     total_thinking_time = 0
     
+    # Create graph
+    G = nx.Graph()
+    embeddings = []
+    
     start_time = time.time()
     step_data_list, done_reason = make_api_call(messages, max_tokens, model_name)
     end_time = time.time()
     thinking_time = end_time - start_time
     total_thinking_time += thinking_time
     
-    for step_data in step_data_list:
+    for i, step_data in enumerate(step_data_list):
+        step_content = f"{step_data['title']}\n{step_data['content']}"
         reasoning_steps.append((step_data['title'].strip(), step_data['content'].strip(), thinking_time / len(step_data_list)))
         
+        # Generate embedding for this step
+        embedding = get_embedding(step_content, model_name)
+        embeddings.append(embedding)
+        
+        # Add node to graph
+        node_id = f"Step{i+1}"
+        G.add_node(node_id, label=step_data['title'].replace("### ", ""))
+        
+        # Calculate similarities with previous steps
+        for j in range(i):
+            similarity = calculate_similarity(embedding, embeddings[j])
+            if similarity > 0.5:  # Only add edges for high similarities
+                G.add_edge(f"Step{j+1}", node_id, weight=similarity)
+        
         if step_data['next_action'] == 'final_answer':
-            yield reasoning_steps, (step_data['title'], step_data['content'], thinking_time), total_thinking_time, done_reason
+            # Calculate strongest path
+            if len(G.nodes()) > 1:
+                try:
+                    strongest_path = nx.dijkstra_path(G, "Step1", node_id, weight='weight')
+                except nx.NetworkXNoPath:
+                    strongest_path = None
+            else:
+                strongest_path = None
+            
+            yield reasoning_steps, (step_data['title'], step_data['content'], thinking_time), total_thinking_time, done_reason, G, strongest_path
             return
     
     # This line should not be reached, but just in case:
-    yield reasoning_steps, None, total_thinking_time, done_reason
+    yield reasoning_steps, None, total_thinking_time, done_reason, G, None
 
 def main():
     st.set_page_config(page_title="o1lama", page_icon="🦙", layout="wide")
@@ -159,13 +198,16 @@ def main():
         
         # Show "Generating response..." message with a spinner
         with st.spinner("Generating response..."):
-            # Generate and display the response
             final_reasoning_steps = []
             final_answer = None
             final_done_reason = None
-            for reasoning_steps, answer, total_thinking_time, done_reason in generate_response(user_query, selected_model, selected_tokens):
+            final_graph = None
+            final_strongest_path = None
+            for reasoning_steps, answer, total_thinking_time, done_reason, graph, strongest_path in generate_response(user_query, selected_model, selected_tokens):
                 final_reasoning_steps = reasoning_steps
                 final_done_reason = done_reason
+                final_graph = graph
+                final_strongest_path = strongest_path
                 if answer:
                     final_answer = answer
 
@@ -184,6 +226,12 @@ def main():
             else:  # If there are no steps and no final answer
                 st.markdown("No detailed reasoning steps were provided.")
 
+        # Display the graph
+        if final_graph:
+            st.subheader("Knowledge Graph")
+            fig = plot_graph(final_graph, final_strongest_path)
+            st.plotly_chart(fig)
+
         # Show total time
         if total_thinking_time is not None:
             time_container.markdown(f"**Total thinking time: {total_thinking_time:.2f} seconds**")
@@ -192,6 +240,67 @@ def main():
         if final_done_reason == "length":
             st.warning("The response was truncated due to token limit. Consider increasing the max token value for a more complete response.")
 
+def plot_graph(G, strongest_path=None):
+    pos = nx.spring_layout(G)
+    edge_x = []
+    edge_y = []
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+
+    edge_trace = go.Scatter(
+        x=edge_x, y=edge_y,
+        line=dict(width=0.5, color='#888'),
+        hoverinfo='none',
+        mode='lines')
+
+    node_x = []
+    node_y = []
+    for node in G.nodes():
+        x, y = pos[node]
+        node_x.append(x)
+        node_y.append(y)
+
+    node_trace = go.Scatter(
+        x=node_x, y=node_y,
+        mode='markers+text',
+        hoverinfo='text',
+        marker=dict(
+            showscale=True,
+            colorscale='YlGnBu',
+            size=10,
+            colorbar=dict(
+                thickness=15,
+                title='Node Connections',
+                xanchor='left',
+                titleside='right'
+            )
+        ),
+        text=[G.nodes[node]['label'] for node in G.nodes()],
+        textposition="top center"
+    )
+
+    # Color nodes in the strongest path
+    node_color = []
+    for node in G.nodes():
+        if strongest_path and node in strongest_path:
+            node_color.append('#FF0000')  # Red for nodes in the strongest path
+        else:
+            node_color.append('#1f77b4')  # Default color
+
+    node_trace.marker.color = node_color
+
+    fig = go.Figure(data=[edge_trace, node_trace],
+                    layout=go.Layout(
+                        showlegend=False,
+                        hovermode='closest',
+                        margin=dict(b=20,l=5,r=5,t=40),
+                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                    )
+    return fig
 
 if __name__ == "__main__":
     main()
