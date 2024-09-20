@@ -1,10 +1,13 @@
 # o1lama
-o1lama is a fun experiment designed to enhance the reasoning capabilities of large language models (LLMs) through o1-like reasoning chains. This approach enables the LLM to “think” and solve logical problems that typically challenge leading models. Unlike o1, all reasoning tokens are displayed, and the application utilizes an open-source model running locally on Ollama.
 
-## About
-o1lama is an toy project that runs Llama 3.1 **8B** locally using Ollama. It was forked from [https://github.com/bklieger-groq/g1](https://github.com/bklieger-groq/g1) which runs Llama 3.1 **70B** models on groq for speed. This experiment demonstrates the power of prompted reasoning in visualized steps similar in appearance to o1. It obviously is not intended as a comparison to or full replication of o1, which employs different techniques.
+o1lama is a fun experiment designed to enhance the reasoning capabilities of large language models (LLMs) through o1-like reasoning chains. This toy project runs Llama 3.1 8B locally using Ollama, enabling the LLM to "think" and solve logical problems that typically challenge leading models. 
+
+The experiment demonstrates the power of prompted reasoning in visualized steps similar in appearance to o1. Unlike o1, all reasoning tokens are displayed, and the application utilizes an open-source model running locally. It's important to note that o1lama is not intended as a comparison to or full replication of o1, which employs different techniques. Instead, it serves as an accessible demonstration of LLM capabilities using locally-run, open-source models.
+
+The project now uses the official Ollama Python bindings for improved integration and performance, allowing users to explore the potential of LLMs on their local machines. [Mistral Nemo 12B](https://ollama.com/library/mistral-nemo) is a good model to try for comparison.
 
 ## Features
+- **Official Ollama Bindings**: Utilizes the official Ollama Python library for improved integration and performance.
 - **Local Model Execution**: Runs large language models locally using Ollama, ensuring privacy and reducing latency.
 - **Multiple Model Support**: Allows selection from various models installed locally, not limited to Llama 3.1.
 - **Adjustable Token Limit**: Users can select the maximum token count (512, 1024, 2048, or 4096) to balance between response length and processing time.
@@ -14,8 +17,6 @@ o1lama is an toy project that runs Llama 3.1 **8B** locally using Ollama. It was
 - **Performance Metrics**: Shows total thinking time, giving users insight into the model's processing speed.
 - **Expandable Steps**: Each reasoning step is presented in an expandable format, allowing users to focus on specific parts of the reasoning process.
 
-## Other models
-o1lama is now a bit more flexible and will let you select from other models besides Llama 3.1 if you have them installed locally. I've experimented using [Mistral Nemo 12B](https://ollama.com/library/mistral-nemo) with fun results.
 
 ## Example:
 
@@ -40,6 +41,7 @@ o1lama is now a bit more flexible and will let you select from other models besi
    ```
    pip3 install -r requirements.txt
    ```
+   This will install Streamlit and the official Ollama Python library.
 
 5. Run the Streamlit app:
    ```
@@ -105,8 +107,7 @@ The application displays the reasoning process and the final answer in the follo
 2. **Answer**: The final answer is displayed after all reasoning steps.
 3. **Total thinking time**: The total time taken by the LLM to generate the response is shown at the end.
 
-### Credits
+### Acknowledgements
 
 Original g1 app was developed by [Benjamin Klieger](https://x.com/benjaminklieger) which runs Llama 3.1 70B on groq for speed.
 
-Forked for Ollama by [Eric Soltys](https://www.threads.net/@kootenay_eric) to run Llama 3.1 8B and other models locally for fun.

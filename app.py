@@ -1,17 +1,13 @@
 import streamlit as st
-import requests
+import ollama
 import json
 import time
 import re
 
-OLLAMA_API_URL = "http://localhost:11434/api/chat"
-
 def get_available_models():
     try:
-        response = requests.get("http://localhost:11434/api/tags")
-        response.raise_for_status()
-        models = response.json()["models"]
-        return [model["name"] for model in models]
+        models = ollama.list()
+        return [model['name'] for model in models['models']]
     except Exception as e:
         st.error(f"Failed to fetch models: {str(e)}")
         return ["llama3.1"]  # Return default model if fetching fails
@@ -19,27 +15,22 @@ def get_available_models():
 def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
     for attempt in range(3):
         try:
-            payload = {
-                "model": model_name,
-                "messages": messages,
-                "stream": False,
-                "options": {
+            response = ollama.chat(
+                model=model_name,
+                messages=messages,
+                options={
                     "num_predict": max_tokens,
                     "temperature": 0.2
                 }
-            }
-            response = requests.post(OLLAMA_API_URL, json=payload)
-            response.raise_for_status()
+            )
             
-            print(f"Raw API response: {response.text}")
+            print(f"Raw API response: {response}")
             
-            response_json = response.json()
+            if 'message' not in response or 'content' not in response['message']:
+                raise ValueError(f"Unexpected API response structure: {response}")
             
-            if 'message' not in response_json or 'content' not in response_json['message']:
-                raise ValueError(f"Unexpected API response structure: {response_json}")
-            
-            content = response_json['message']['content']
-            done_reason = response_json.get('done_reason', None)
+            content = response['message']['content']
+            done_reason = response.get('done', False)
             
             # Parse the multi-step response
             steps = re.split(r'(### Step \d+:.*?|### Final Answer:?.*?)(?=\n)', content)
@@ -85,12 +76,12 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
         except Exception as e:
             if attempt == 2:
                 if is_final_answer:
-                    return [{"title": "### Error", "content": f"Failed to generate final answer after 3 attempts. Error: {str(e)}"}]
+                    return [{"title": "### Error", "content": f"Failed to generate final answer after 3 attempts. Error: {str(e)}"}], None
                 else:
-                    return [{"title": "### Error", "content": f"Failed to generate step after 3 attempts. Error: {str(e)}", "next_action": "final_answer"}]
+                    return [{"title": "### Error", "content": f"Failed to generate step after 3 attempts. Error: {str(e)}", "next_action": "final_answer"}], None
             time.sleep(1)  # Wait for 1 second before retrying
 
-    return None
+    return None, None
 
 def generate_response(prompt, model_name, max_tokens):
     messages = [
@@ -161,7 +152,7 @@ def main():
     selected_tokens = st.selectbox("Select max tokens:", token_options, index=token_options.index(1024))
     
     # Text area for user query (4 lines high)
-    user_query = st.text_area("Enter your query:", placeholder="e.g., How many 'R's are in the word strawberry?", height=120)
+    user_query = st.text_area("Enter your query:", placeholder="e.g., How many times does the letter 'R' appear in the word 'strawberry'?", height=120)
     
     # Create placeholder containers
     response_container = st.empty()
