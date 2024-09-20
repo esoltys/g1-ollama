@@ -190,11 +190,13 @@ def main():
     # Create placeholder containers
     response_container = st.empty()
     time_container = st.empty()
+    graph_container = st.empty()
     
     if user_query:
         # Clear previous response
         response_container.empty()
         time_container.empty()
+        graph_container.empty() 
         
         # Show "Generating response..." message with a spinner
         with st.spinner("Generating response..."):
@@ -226,11 +228,12 @@ def main():
             else:  # If there are no steps and no final answer
                 st.markdown("No detailed reasoning steps were provided.")
 
-        # Display the graph
-        if final_graph:
-            st.subheader("Knowledge Graph")
-            fig = plot_graph(final_graph, final_strongest_path)
-            st.plotly_chart(fig)
+        # Display the graph in its own container
+        with graph_container.container():
+            if final_graph:
+                st.subheader("Knowledge Graph")
+                fig = plot_graph(final_graph, final_strongest_path)
+                st.plotly_chart(fig)
 
         # Show total time
         if total_thinking_time is not None:
