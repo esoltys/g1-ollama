@@ -244,7 +244,19 @@ def main():
             st.warning("The response was truncated due to token limit. Consider increasing the max token value for a more complete response.")
 
 def plot_graph(G, strongest_path=None):
-    pos = nx.spring_layout(G)
+    # Remove the "Final Answer" node
+    G = G.copy()  # Create a copy to avoid modifying the original graph
+    final_answer_node = None
+    for node, data in G.nodes(data=True):
+        if "Final Answer" in data['label']:
+            final_answer_node = node
+            break
+    if final_answer_node:
+        G.remove_node(final_answer_node)
+
+    # Use Fruchterman-Reingold layout
+    pos = nx.fruchterman_reingold_layout(G, k=1, iterations=50)
+    
     edge_x = []
     edge_y = []
     for edge in G.edges():
@@ -255,7 +267,7 @@ def plot_graph(G, strongest_path=None):
 
     edge_trace = go.Scatter(
         x=edge_x, y=edge_y,
-        line=dict(width=0.5, color='#888'),
+        line=dict(width=1, color='#888'),
         hoverinfo='none',
         mode='lines')
 
@@ -273,7 +285,7 @@ def plot_graph(G, strongest_path=None):
         marker=dict(
             showscale=True,
             colorscale='YlGnBu',
-            size=10,
+            size=20,
             colorbar=dict(
                 thickness=15,
                 title='Node Connections',
@@ -282,13 +294,13 @@ def plot_graph(G, strongest_path=None):
             )
         ),
         text=[G.nodes[node]['label'] for node in G.nodes()],
-        textposition="top center"
+        textposition="middle center"
     )
 
     # Color nodes in the strongest path
     node_color = []
     for node in G.nodes():
-        if strongest_path and node in strongest_path:
+        if strongest_path and node in strongest_path and node != final_answer_node:
             node_color.append('#FF0000')  # Red for nodes in the strongest path
         else:
             node_color.append('#1f77b4')  # Default color
@@ -297,12 +309,52 @@ def plot_graph(G, strongest_path=None):
 
     fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(
+                        title="Knowledge Graph",
+                        titlefont_size=16,
                         showlegend=False,
                         hovermode='closest',
                         margin=dict(b=20,l=5,r=5,t=40),
                         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                        height=600,
+                        width=800,
+                    ))
+    
+    # Add zoom and pan capabilities
+    fig.update_layout(
+        dragmode='pan',
+        xaxis=dict(
+            scaleanchor="y",
+            scaleratio=1,
+        ),
+        yaxis=dict(
+            scaleanchor="x",
+            scaleratio=1,
+        ),
+    )
+
+    # Add buttons for zoom control
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="left",
+                buttons=[
+                    dict(args=[{"visible": [True, True]}],
+                         label="Reset",
+                         method="relayout"
                     )
+                ],
+                pad={"r": 10, "t": 10},
+                showactive=False,
+                x=0.11,
+                xanchor="left",
+                y=1.1,
+                yanchor="top"
+            ),
+        ]
+    )
+    
     return fig
 
 if __name__ == "__main__":
