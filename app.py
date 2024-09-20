@@ -90,6 +90,28 @@ def get_embedding(text, model_name):
 def calculate_similarity(embedding1, embedding2):
     return cosine_similarity([embedding1], [embedding2])[0][0]
 
+def find_strongest_path(G, start, end):
+    def dfs(node, path, total_weight):
+        if node == end:
+            return path, total_weight
+        
+        best_path, best_weight = None, -float('inf')
+        for neighbor in G.neighbors(node):
+            if neighbor not in path:
+                edge_weight = G[node][neighbor]['weight']
+                new_path, new_weight = dfs(neighbor, path + [neighbor], total_weight + edge_weight)
+                if new_path and new_weight > best_weight:
+                    best_path, best_weight = new_path, new_weight
+        
+        return best_path, best_weight
+
+    strongest_path, _ = dfs(start, [start], 0)
+    if strongest_path:
+        strongest_edges = list(zip(strongest_path[:-1], strongest_path[1:]))
+        return strongest_path, strongest_edges
+    return None, None
+
+
 def generate_response(prompt, model_name, max_tokens):
     messages = [
         {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. Follow these guidelines:
@@ -157,13 +179,15 @@ Remember to be aware of your limitations as an AI and use best practices in your
             # Calculate strongest path
             if len(G.nodes()) > 1:
                 try:
-                    strongest_path = nx.dijkstra_path(G, "Step1", node_id, weight='weight')
-                except nx.NetworkXNoPath:
-                    strongest_path = None
+                    strongest_path, strongest_edges = find_strongest_path(G, "Step1", node_id)
+                    print(f"Strongest edges: {strongest_edges}")  # Add this line for debugging
+                except Exception as e:
+                    print(f"Error finding strongest path: {e}")
+                    strongest_path, strongest_edges = None, None
             else:
-                strongest_path = None
-            
-            yield reasoning_steps, (step_data['title'], step_data['content'], thinking_time), total_thinking_time, done_reason, G, strongest_path
+                strongest_path, strongest_edges = None, None
+
+            yield reasoning_steps, (step_data['title'], step_data['content'], thinking_time), total_thinking_time, done_reason, G, strongest_edges
             return
     
     # This line should not be reached, but just in case:
@@ -209,12 +233,12 @@ def main():
             final_answer = None
             final_done_reason = None
             final_graph = None
-            final_strongest_path = None
-            for reasoning_steps, answer, total_thinking_time, done_reason, graph, strongest_path in generate_response(user_query, selected_model, selected_tokens):
+            final_strongest_edges = None  # Changed from final_strongest_path
+            for reasoning_steps, answer, total_thinking_time, done_reason, graph, strongest_edges in generate_response(user_query, selected_model, selected_tokens):
                 final_reasoning_steps = reasoning_steps
                 final_done_reason = done_reason
                 final_graph = graph
-                final_strongest_path = strongest_path
+                final_strongest_edges = strongest_edges  # Changed from final_strongest_path
                 if answer:
                     final_answer = answer
 
@@ -237,7 +261,7 @@ def main():
         with graph_container.container():
             if final_graph:
                 st.subheader("Knowledge Graph")
-                fig = plot_graph(final_graph, final_strongest_path, layout_type=selected_layout)
+                fig = plot_graph(final_graph, final_strongest_edges, layout_type=selected_layout)
                 st.plotly_chart(fig)
 
         # Show total time

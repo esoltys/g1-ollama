@@ -9,7 +9,7 @@ def bezier_curve(start, end, num_points=20):
     y = (1-t)**2 * start[1] + 2*(1-t)*t * control[1] + t**2 * end[1]
     return x, y
 
-def plot_graph(G, strongest_path=None, layout_type='force'):
+def plot_graph(G, strongest_edges=None, layout_type='circular'):
     G = G.copy()
     final_answer_node = next((node for node, data in G.nodes(data=True) if "Final Answer" in data['label']), None)
     if final_answer_node:
@@ -51,9 +51,16 @@ def plot_graph(G, strongest_path=None, layout_type='force'):
         
         x, y = bezier_curve((x0, y0), (x1, y1))
         
+        # Check if this edge is part of the strongest path
+        is_strongest = strongest_edges and (edge[0], edge[1]) in strongest_edges
+        
         edge_trace = go.Scatter(
             x=x, y=y,
-            line=dict(width=scaled_width * 4, color='rgba(150,150,150,0.5)'),
+            line=dict(
+                width=scaled_width * 4, 
+                color='red' if is_strongest else 'rgba(150,150,150,0.5)',
+                dash='solid'  # Change this line to always use solid lines
+            ),
             hoverinfo='text',
             text=f"Weight: {weight:.2f}",
             mode='lines'
@@ -77,7 +84,7 @@ def plot_graph(G, strongest_path=None, layout_type='force'):
         edge_label_traces.append(edge_label)
 
     node_sizes = [20 + 5 * G.degree(node) for node in G.nodes()]
-    node_colors = ['#FF9999' if strongest_path and node in strongest_path else '#66B2FF' for node in G.nodes()]
+    node_colors = ['#000000' if strongest_edges and node in set(sum(strongest_edges, ())) else '#66B2FF' for node in G.nodes()]
 
     node_trace = go.Scatter(
         x=[pos[node][0] for node in G.nodes()],
@@ -87,11 +94,12 @@ def plot_graph(G, strongest_path=None, layout_type='force'):
         marker=dict(
             color=node_colors,
             size=node_sizes,
-            line=dict(width=1, color='white')
+            line=dict(width=1, color='white'),
+            opacity=1,
         ),
         text=[G.nodes[node]['label'] for node in G.nodes()],
         textposition="top center",
-        textfont=dict(size=10, color='black')
+        textfont=dict(size=14, color='black', family='Arial', weight='bold')
     )
 
     data = edge_traces + edge_label_traces + [node_trace]
