@@ -32,20 +32,24 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
             content = response['message']['content']
             done_reason = response.get('done', False)
             
-            # Parse the multi-step response
-            steps = re.split(r'(### Step \d+:.*?|### Final Answer:?.*?)(?=\n)', content)
-            steps = [step.strip() for step in steps if step.strip()]
+            # Remove any content before the first step or final answer
+            content = re.sub(r'^.*?((?:### )?Step 1:|### Final Answer:)', r'\1', content, flags=re.DOTALL)
             
+            # Parse the multi-step response
+            steps = re.split(r'((?:### )?Step \d+:.*?(?=\n)|### Final Answer:.*?(?=\n))', content, flags=re.DOTALL)
+            steps = [step.strip() for step in steps if step.strip()]
+
             parsed_steps = []
             for i in range(0, len(steps), 2):
                 if i + 1 < len(steps):
-                    title = steps[i]
-                    content = steps[i+1]
+                    title = steps[i].strip()
+                    content = steps[i+1].strip()
                     
                     if "Final Answer" in title:
-                        title = "### Final Answer"
                         next_action = "final_answer"
                     else:
+                        if not title.startswith("###"):
+                            title = f"### {title}"
                         next_action = "continue"
                     
                     parsed_steps.append({
@@ -54,7 +58,6 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
                         "next_action": next_action
                     })
 
-            
             # If we found valid steps, return them along with done_reason
             if parsed_steps:
                 return parsed_steps, done_reason
@@ -65,14 +68,7 @@ def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
                 "content": content,
                 "next_action": "final_answer"
             }], done_reason
-            
-            # If no valid steps found, create a single step from the entire content
-            return [{
-                "title": "### Response",
-                "content": content,
-                "next_action": "final_answer"
-            }]
-        
+
         except Exception as e:
             if attempt == 2:
                 if is_final_answer:
@@ -115,24 +111,19 @@ Remember to be aware of your limitations as an AI and use best practices in your
     reasoning_steps = []
     total_thinking_time = 0
     
-    while True:
-        start_time = time.time()
-        step_data_list, done_reason = make_api_call(messages, max_tokens, model_name)
-        end_time = time.time()
-        thinking_time = end_time - start_time
-        total_thinking_time += thinking_time
+    start_time = time.time()
+    step_data_list, done_reason = make_api_call(messages, max_tokens, model_name)
+    end_time = time.time()
+    thinking_time = end_time - start_time
+    total_thinking_time += thinking_time
+    
+    for step_data in step_data_list:
+        reasoning_steps.append((step_data['title'].strip(), step_data['content'].strip(), thinking_time / len(step_data_list)))
         
-        for step_data in step_data_list:
-            reasoning_steps.append((step_data['title'].strip(), step_data['content'].strip(), thinking_time / len(step_data_list)))
-            messages.append({"role": "assistant", "content": json.dumps(step_data)})
-            
-            if step_data['next_action'] == 'final_answer':
-                yield reasoning_steps, (step_data['title'], step_data['content'], thinking_time), total_thinking_time, done_reason
-                return
-        
-        # Always yield reasoning steps, even if there's only one
-        yield reasoning_steps, None, None, done_reason
-
+        if step_data['next_action'] == 'final_answer':
+            yield reasoning_steps, (step_data['title'], step_data['content'], thinking_time), total_thinking_time, done_reason
+            return
+    
     # This line should not be reached, but just in case:
     yield reasoning_steps, None, total_thinking_time, done_reason
 
