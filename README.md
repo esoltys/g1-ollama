@@ -21,7 +21,8 @@ The project now uses the official Ollama Python bindings for improved integratio
 
 ## Example:
 
-![Example](screenshot.png)
+![Screenshot 1](screenshot-01.png)
+![Screenshot 2](screenshot-02.png)
 
 ### Quickstart
 
