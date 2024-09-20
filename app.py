@@ -6,7 +6,7 @@ import re
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 import networkx as nx
-import plotly.graph_objects as go
+from graph_utils import plot_graph
 
 def get_available_models():
     try:
@@ -185,8 +185,9 @@ def main():
     selected_tokens = st.selectbox("Select max tokens:", token_options, index=token_options.index(1024))
 
     # Add dropdown for layout selection
-    layout_options = ['force', 'circular', 'spectral', 'kamada_kawai']
-    selected_layout = st.selectbox("Select graph layout:", layout_options, index=0)
+    # layout_options = ['force', 'circular', 'spectral', 'kamada_kawai']
+    # selected_layout = st.selectbox("Select graph layout:", layout_options, index=0)
+    selected_layout = 'circular';
     
     # Text area for user query (4 lines high)
     user_query = st.text_area("Enter your query:", placeholder="e.g., How many times does the letter 'R' appear in the word 'strawberry'?", height=120)
@@ -246,102 +247,6 @@ def main():
         # Display warning if response was truncated due to token limit
         if final_done_reason == "length":
             st.warning("The response was truncated due to token limit. Consider increasing the max token value for a more complete response.")
-
-def plot_graph(G, strongest_path=None, layout_type='force'):
-    G = G.copy()
-    final_answer_node = next((node for node, data in G.nodes(data=True) if "Final Answer" in data['label']), None)
-    if final_answer_node:
-        G.remove_node(final_answer_node)
-
-    if layout_type == 'force':
-        pos = nx.spring_layout(G, k=2, iterations=50)
-    elif layout_type == 'circular':
-        pos = nx.circular_layout(G)
-    elif layout_type == 'spectral':
-        pos = nx.spectral_layout(G)
-    else:
-        pos = nx.kamada_kawai_layout(G)
-
-    edge_traces = []
-    edge_label_traces = []
-    for edge in G.edges(data=True):
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        weight = edge[2].get('weight', 1)
-        edge_trace = go.Scatter(
-            x=[x0, x1, None], y=[y0, y1, None],
-            line=dict(width=weight * 2, color='#888'),
-            hoverinfo='text',
-            text=f"Weight: {weight:.2f}",
-            mode='lines'
-        )
-        edge_traces.append(edge_trace)
-
-        edge_label = go.Scatter(
-            x=[(x0 + x1) / 2], y=[(y0 + y1) / 2],
-            text=[f"{weight:.2f}"],
-            mode='text',
-            textposition='middle center',
-            textfont=dict(size=10, color='black'),
-            hoverinfo='none'
-        )
-        edge_label_traces.append(edge_label)
-
-    node_trace = go.Scatter(
-        x=[pos[node][0] for node in G.nodes()],
-        y=[pos[node][1] for node in G.nodes()],
-        mode='markers+text',
-        hoverinfo='text',
-        marker=dict(
-            showscale=True,
-            colorscale='YlGnBu',
-            size=20,
-            colorbar=dict(thickness=15, title='Node Connections', xanchor='left', titleside='right')
-        ),
-        text=[G.nodes[node]['label'] for node in G.nodes()],
-        textposition="top center"
-    )
-
-    node_color = ['#FF0000' if strongest_path and node in strongest_path else '#1f77b4' for node in G.nodes()]
-    node_trace.marker.color = node_color
-
-    data = edge_traces + edge_label_traces + [node_trace]
-
-    fig = go.Figure(data=data,
-                    layout=go.Layout(
-                        showlegend=False,
-                        hovermode='closest',
-                        margin=dict(b=20, l=5, r=5, t=40),
-                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        height=600,
-                        width=800,
-                    ))
-    
-    fig.update_layout(
-        dragmode='pan',
-        xaxis=dict(scaleanchor="y", scaleratio=1),
-        yaxis=dict(scaleanchor="x", scaleratio=1),
-        updatemenus=[
-            dict(
-                type="buttons",
-                direction="left",
-                buttons=[
-                    dict(args=[{"visible": [True] * len(data)}], label="Reset", method="relayout"),
-                    dict(args=[{"layout": {"dragmode": "pan"}}], label="Pan", method="relayout"),
-                    dict(args=[{"layout": {"dragmode": "zoom"}}], label="Zoom", method="relayout"),
-                ],
-                pad={"r": 10, "t": 10},
-                showactive=True,
-                x=0.11,
-                xanchor="left",
-                y=1.1,
-                yanchor="top"
-            ),
-        ]
-    )
-    
-    return fig
 
 
 if __name__ == "__main__":
