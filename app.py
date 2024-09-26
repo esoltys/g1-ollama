@@ -14,7 +14,7 @@ def get_available_models():
         return [model['name'] for model in models['models']]
     except Exception as e:
         st.error(f"Failed to fetch models: {str(e)}")
-        return ["llama3.1"]  # Return default model if fetching fails
+        return ["llama3.2"]  # Return default model if fetching fails
 
 def make_api_call(messages, max_tokens, model_name, is_final_answer=False):
     for attempt in range(3):
@@ -211,7 +211,7 @@ def main():
     # Add dropdown for layout selection
     # layout_options = ['force', 'circular', 'spectral', 'kamada_kawai']
     # selected_layout = st.selectbox("Select graph layout:", layout_options, index=0)
-    selected_layout = 'circular';
+    selected_layout = 'circular'  # Hard-code it to circular layout
     
     # Text area for user query (4 lines high)
     user_query = st.text_area("Enter your query:", placeholder="e.g., How many times does the letter 'R' appear in the word 'strawberry'?", height=120)

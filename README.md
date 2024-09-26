@@ -1,6 +1,6 @@
 # o1lama
 
-o1lama is a fun experiment designed to enhance the reasoning capabilities of large language models (LLMs) through o1-like reasoning chains. This toy project runs Llama 3.1 8B locally using Ollama, enabling the LLM to "think" and solve logical problems that typically challenge leading models. 
+o1lama is a fun experiment designed to enhance the reasoning capabilities of large language models (LLMs) through o1-like reasoning chains. This toy project runs [Llama 3.2 3B](https://ollama.com/library/llama3.2) locally using Ollama, enabling the LLM to "think" and solve logical problems that typically challenge leading models. 
 
 The experiment demonstrates the power of prompted reasoning in visualized steps similar in appearance to o1. Unlike o1, all reasoning tokens are displayed, and the application utilizes an open-source model running locally. It's important to note that o1lama is not intended as a comparison to or full replication of o1, which employs different techniques. Instead, it serves as an accessible demonstration of LLM capabilities using locally-run, open-source models.
 
@@ -8,7 +8,7 @@ The project now uses the official Ollama Python bindings for improved integratio
 
 ## Features
 - **Local Model Execution**: Runs large language models locally using Ollama, ensuring privacy and reducing latency.
-- **Multiple Model Support**: Allows selection from various models installed locally, not limited to Llama 3.1.
+- **Multiple Model Support**: Allows selection from various models installed locally, not limited to Llama 3.2.
 - **Adjustable Token Limit**: Users can select the maximum token count (512, 1024, 2048, or 4096) to balance between response length and processing time.
 - **Step-by-Step Reasoning**: Displays the AI's thought process in clear, numbered steps, enhancing transparency and understandability.
 - **Interactive UI**: Built with Streamlit for an intuitive and responsive user experience.
@@ -28,9 +28,9 @@ The project now uses the official Ollama Python bindings for improved integratio
 
 1. Ensure you have [Ollama](https://ollama.ai/) installed and running on your system.
 
-2. Pull the Llama-3.1 model (or your preferred model) using Ollama:
+2. Pull the Llama-3.2 model (or your preferred model) using Ollama:
    ```
-   ollama pull llama3.1
+   ollama pull llama3.2
    ```
 
 3. Set up a Python virtual environment:
