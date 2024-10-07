@@ -114,33 +114,58 @@ def find_strongest_path(G, start, end):
 
 def generate_response(prompt, model_name, max_tokens):
     messages = [
-        {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step. Follow these guidelines:
+        {"role": "system", "content": """You are an expert AI assistant that explains your reasoning step by step, incorporating dynamic Chain of Thought (CoT), reflection, and verbal reinforcement learning. Follow these guidelines:
 
 1. Structure your response with clear steps, each starting with "### Step X: [Step Title]" where X is the step number.
-2. Use at least 3 steps in your reasoning BEFORE providing the final answer.
+2. Use at least 5 steps in your reasoning BEFORE providing the final answer.
 3. For each step, provide detailed content explaining your thought process.
-4. Explore alternative answers and consider potential errors in your reasoning.
-5. Use at least 3 different methods to derive the answer.
-6. After your reasoning steps, end with a final step titled "### Final Answer:"
-7. In the "### Final Answer:" step, provide a concise summary of your conclusion.
+4. Explore multiple angles and approaches in your reasoning.
+5. After each step, decide if you need another step or if you're ready to give the final answer.
+6. Continuously adjust your reasoning based on intermediate results and reflections, adapting your strategy as you progress.
+7. Regularly evaluate your progress, being critical and honest about your reasoning process.
+8. Assign a quality score between 0.0 and 1.0 to guide your approach:
+   - 0.8+: Continue current approach
+   - 0.5-0.7: Consider minor adjustments
+   - Below 0.5: Seriously consider backtracking and trying a different approach
+   - If writing out the quality score do so in the format "**Quality Score:** 0.8" for example.
+9. If unsure or if your score is low, backtrack and try a different approach, explaining your decision.
+10. For mathematical problems, show all work explicitly using LaTeX for formal notation and provide detailed proofs. Use $ for inline LaTeX and $$ for display LaTeX.
+11. Explore multiple solutions individually if possible, comparing approaches in your reflections.
+12. Write out all calculations and reasoning explicitly.
+13. Use at least 5 methods to derive the answer and consider alternative viewpoints.
+14. Be aware of your limitations as an AI and use best practices in your reasoning.
+15. After every 3 steps, perform a detailed self-reflection on your reasoning so far, considering potential biases and alternative viewpoints.
+16. End with a final step titled "### Final Answer:"
+17. In the "### Final Answer:" step, provide a concise summary of your conclusion.
 
 Example structure:
 ### Step 1: [Step Title]
+[Detailed thought process, exploring multiple angles]
+[Assign quality score]
 [Step 1 content]
 
 ### Step 2: [Step Title]
+[Detailed thought process, exploring multiple angles]
+[Assign quality score]
 [Step 2 content]
 
 ### Step 3: [Step Title]
+[Detailed thought process, exploring multiple angles]
+[Assign quality score]
 [Step 3 content]
 
-### Step 4: [Step Title]
-[Step 4 content]
+### Step 4: Self-Reflection
+[Detailed self-reflection on reasoning so far]
+[Consider potential biases and alternative viewpoints]
+[Decide whether to continue or change approach]
+[Self-reflection content]
+
+[Continue with more steps...]
 
 ### Final Answer:
 [Concise summary of the conclusion]
 
-Remember to be aware of your limitations as an AI and use best practices in your reasoning. Aim for at least 4-5 steps before the final answer to ensure thorough analysis."""},
+Remember to be thorough in your analysis and adapt your approach based on your ongoing reflections."""},
         {"role": "user", "content": prompt},
     ]
     
@@ -193,6 +218,23 @@ Remember to be aware of your limitations as an AI and use best practices in your
     # This line should not be reached, but just in case:
     yield reasoning_steps, None, total_thinking_time, done_reason, G, None
 
+def render_latex(content):
+    # Replace "### Quality Score:" with "**Quality Score:**"
+    content = content.replace("### Quality Score:", "**Quality Score:**")
+    
+    # Split the content into LaTeX and non-LaTeX parts
+    parts = re.split(r'(\$\$.*?\$\$|\$.*?\$)', content, flags=re.DOTALL)
+    rendered_parts = []
+    for part in parts:
+        if part.startswith('$') and part.endswith('$'):
+            # Render LaTeX
+            rendered_parts.append(st.latex(part))
+        elif part.strip():
+            # Render regular text
+            rendered_parts.append(st.markdown(part))
+    return rendered_parts
+
+
 def main():
     st.set_page_config(page_title="o1lama", page_icon="🦙", layout="wide")
     
@@ -209,9 +251,9 @@ def main():
     selected_tokens = st.selectbox("Select max tokens:", token_options, index=token_options.index(1024))
 
     # Add dropdown for layout selection
-    # layout_options = ['force', 'circular', 'spectral', 'kamada_kawai']
-    # selected_layout = st.selectbox("Select graph layout:", layout_options, index=0)
-    selected_layout = 'circular'  # Hard-code it to circular layout
+    layout_options = ['force', 'circular', 'spectral', 'kamada_kawai']
+    selected_layout = st.selectbox("Select graph layout:", layout_options, index=0)
+    # selected_layout = 'circular'  # Hard-code it to circular layout
     
     # Text area for user query (4 lines high)
     user_query = st.text_area("Enter your query:", placeholder="e.g., How many times does the letter 'R' appear in the word 'strawberry'?", height=120)
@@ -247,15 +289,16 @@ def main():
                 st.markdown("### Reasoning")
                 for step in final_reasoning_steps[:-1]:  # Exclude the last step
                     with st.expander(step[0], expanded=True):
-                        st.markdown(step[1], unsafe_allow_html=True)
+                        render_latex(step[1])
             
             if final_answer:
                 st.markdown("### Final Answer")  # Display "Final Answer" without colon
-                st.markdown(final_answer[1], unsafe_allow_html=True)
+                render_latex(final_answer[1])
             elif final_reasoning_steps:  # If there's no final answer but there are steps
-                st.markdown(final_reasoning_steps[-1][1], unsafe_allow_html=True)
+                render_latex(final_reasoning_steps[-1][1])
             else:  # If there are no steps and no final answer
                 st.markdown("No detailed reasoning steps were provided.")
+
 
         # Display the graph in its own container
         with graph_container.container():

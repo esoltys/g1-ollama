@@ -17,7 +17,7 @@ The project now uses the official Ollama Python bindings for improved integratio
 - **Expandable Steps**: Each reasoning step is presented in an expandable format, allowing users to focus on specific parts of the reasoning process.
 - **Knowledge Graph**: Visualizes the relationships between different reasoning steps using a network graph.
 - **Strongest Path**: Highlights the most relevant path of reasoning in the knowledge graph.
-
+- **LaTeX Support**: Renders mathematical notations and formulas using LaTeX for clear presentation of mathematical concepts.
 
 ## Example:
 
@@ -54,12 +54,19 @@ The project now uses the official Ollama Python bindings for improved integratio
 
 The system prompt used in the application encourages the AI to:
 
-1. Structure responses with clear, numbered steps.
-2. Use at least 3 steps in reasoning before providing a final answer.
-3. Provide detailed explanations for each step.
-4. Explore alternative answers and consider potential errors.
-5. Use at least 3 different methods to derive the answer.
-6. End with a "Final Answer" step containing a concise summary.
+1. Structure responses with clear steps, each starting with "### Step X: [Step Title]".
+2. Use at least 5 steps in reasoning BEFORE providing the final answer.
+3. Provide detailed explanations for each step, exploring multiple angles and approaches.
+4. Continuously adjust reasoning based on intermediate results and reflections.
+5. Regularly evaluate progress, assigning quality scores to guide the approach.
+6. Backtrack and try different approaches if unsure or if the quality score is low.
+7. Show all work explicitly, using LaTeX for formal mathematical notation when applicable.
+8. Explore multiple solutions individually and compare approaches in reflections.
+9. Use at least 5 different methods to derive the answer and consider alternative viewpoints.
+10. Perform detailed self-reflection every 3 steps, considering potential biases and alternative viewpoints.
+11. End with a "### Final Answer:" step containing a concise summary of the conclusion.
+
+This strategy promotes thorough analysis, adaptability, and self-reflection throughout the reasoning process.
 
 The full prompt can be found in the `generate_response` function in `app.py`.
 
@@ -74,4 +81,6 @@ The full prompt can be found in the `generate_response` function in `app.py`.
 
 Forked from [g1](https://github.com/bklieger-groq/g1) which is an o1-like reasoning chain on groq by [Benjamin Klieger](https://github.com/bklieger-groq)
 
-I liked the [Local Knowledge Graph](https://github.com/punnerud/Local_Knowledge_Graph) by [Morten Punnerud-Engelstad](https://github.com/punnerud)
+I liked the idea of a [Local Knowledge Graph](https://github.com/punnerud/Local_Knowledge_Graph) by [Morten Punnerud-Engelstad](https://github.com/punnerud)
+
+I refactored a more detailed CoT prompt from [LLM-Research-Scripts](https://github.com/harishsg993010/LLM-Research-Scripts) by [Harish](https://github.com/harishsg993010)
