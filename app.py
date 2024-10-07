@@ -222,13 +222,22 @@ def render_latex(content):
     # Replace "### Quality Score:" with "**Quality Score:**"
     content = content.replace("### Quality Score:", "**Quality Score:**")
     
+    # Escape colons that are not part of LaTeX commands
+    content = re.sub(r'(?<!\\\w):(?!\s*\\\w)', '\\:', content)
+    
     # Split the content into LaTeX and non-LaTeX parts
-    parts = re.split(r'(\$\$.*?\$\$|\$.*?\$)', content, flags=re.DOTALL)
+    parts = re.split(r'(\\\[.*?\\\]|\$\$.*?\$\$|\$.*?\$)', content, flags=re.DOTALL)
     rendered_parts = []
     for part in parts:
-        if part.startswith('$') and part.endswith('$'):
-            # Render LaTeX
-            rendered_parts.append(st.latex(part))
+        if part.startswith('\\[') and part.endswith('\\]'):
+            # Render display LaTeX
+            rendered_parts.append(st.latex(part.strip('\\[]')))
+        elif part.startswith('$$') and part.endswith('$$'):
+            # Render display LaTeX
+            rendered_parts.append(st.latex(part.strip('$')))
+        elif part.startswith('$') and part.endswith('$'):
+            # Render inline LaTeX
+            rendered_parts.append(st.latex(part.strip('$')))
         elif part.strip():
             # Render regular text
             rendered_parts.append(st.markdown(part))
